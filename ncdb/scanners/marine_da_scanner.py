@@ -1,0 +1,251 @@
+import logging
+logger = logging.getLogger(__name__)
+
+import os
+import re
+from datetime import datetime
+from typing import List, Optional
+
+from ncdb.ds.file import File
+from ncdb.ds.dataset import Dataset
+
+from .base import BaseScanner
+
+
+class MarineDAScanner(BaseScanner):
+
+    def discover_datasets(self) -> List[Dataset]:
+        if not os.path.exists(self.root_dir):
+            logger.error(f"Data root not found: {self.root_dir}")
+            return []
+
+        dataset_names = set()
+
+        try:
+            entries = os.listdir(self.root_dir)
+        except Exception:
+            logger.exception(
+                f"Failed listing {self.root_dir}"
+            )
+            return []
+
+        for entry in entries:
+            full_path = os.path.join(self.root_dir, entry)
+
+            if not os.path.isdir(full_path):
+                continue
+
+            if "." in entry:
+                prefix = entry.split(".")[0]
+                dataset_names.add(prefix)
+
+        datasets = [
+            Dataset(name=name, root_dir=self.root_dir)
+            for name in sorted(dataset_names)
+        ]
+
+        logger.info(f"Discovered {len(datasets)} datasets {[d.name for d in datasets]}")
+
+        return datasets
+
+    
+    '''
+    def old_discover_datasets(self) -> None:
+        if not os.path.exists(self.root_dir):
+            logger.error(
+                f"Data root not found: {self.root_dir}"
+            )
+            self.datasets = []
+
+        dataset_names = set()
+
+        for entry in os.listdir(self.root_dir):
+            full_path = os.path.join(self.root_dir, entry)
+
+            if not os.path.isdir(full_path):
+                continue
+
+            if "." in entry:
+                prefix = entry.split(".")[0]
+                dataset_names.add(prefix)
+
+        self.datasets = [
+            Dataset(name=name, root_dir=self.root_dir)
+            for name in sorted(dataset_names)
+        ]
+
+        logger.info(f"Discovered {len(self.datasets)} datasets {[d.name for d in self.datasets]}")
+    '''
+
+    def discover_cycles(self, dataset: Dataset):
+
+        try:
+            valid_dir = os.path.isdir(self.root_dir)
+        except Exception:
+            logger.exception(
+                f"Failed checking directory {self.root_dir}"
+            )
+            return []
+
+        if not self.root_dir or not valid_dir:
+            logger.warning(f"Invalid root_dir for dataset '{dataset.name}'")
+            return []
+
+        pattern = re.compile(rf"^{re.escape(dataset.name)}\.(\d{{8}})$")
+
+        discovered = []
+
+        try:
+            entries = os.listdir(self.root_dir)
+        except Exception:
+            logger.exception(
+                f"Failed listing {self.root_dir}"
+            )
+            return []
+
+        for entry in entries:
+            entry_path = os.path.join(self.root_dir, entry)
+            if not os.path.isdir(entry_path):
+                continue
+
+            match = pattern.match(entry)
+            if not match:
+                continue
+
+            cycle_date_str = match.group(1)
+
+            try:
+                cycle_date = datetime.strptime(cycle_date_str, "%Y%m%d").date()
+            except ValueError:
+                logger.warning(f"Invalid date format: {cycle_date_str}")
+                continue
+
+            for hour_entry in os.listdir(entry_path):
+                hour_path = os.path.join(entry_path, hour_entry)
+
+                try:
+                    valid_dir = os.path.isdir(hour_path)
+                except Exception:
+                    logger.exception(
+                        f"Failed listing {hour_path}"
+                    )
+                    return []
+
+                if (
+                    valid_dir
+                    and self.is_valid_cycle_hour(hour_entry)
+                ):
+                    discovered.append((cycle_date, hour_entry))
+
+        discovered.sort(key=lambda x: (x[0], x[1]))
+
+        logger.info(
+            f"Discovered {len(discovered)} cycles for dataset {dataset.name}"
+        )
+
+        return discovered
+
+    def scan_cycle(self, dataset: Dataset, cycle_date, cycle_hour):
+        logger.info(f"Scanning {dataset.name} cycle {cycle_date}, {cycle_hour}")
+
+        cycle_dir = self.build_cycle_dir(
+            dataset.name, cycle_date, cycle_hour
+        )
+
+        files = self._scan_files(cycle_dir)
+        selected = self.select_files(files, dataset.name, cycle_hour)
+
+        results = []
+        for f in selected:
+            name = self.parse_obs_space(f.path)
+            if name:
+                results.append((f, name))
+
+        # logger.info(f"Selected files: {len(selected)}")
+        # logger.info(f"Scan results: {len(results)}")
+
+        logger.info(
+            f"Dataset={dataset.name} "
+            f"Cycle={cycle_date} {cycle_hour} "
+            f"Files={len(files)} "
+            f"Selected={len(selected)} "
+            f"Results={len(results)}"
+        )
+
+        return results
+
+    def select_files(self, files, dataset_name, cycle_hour):
+        return [
+            f for f in files
+            if f.path.endswith(".nc")
+        ]
+
+    def build_cycle_dir(self, dataset_name, cycle_date, cycle_hour):
+        return os.path.join(
+            self.root_dir,
+            f"{dataset_name}.{cycle_date.strftime('%Y%m%d')}",
+            cycle_hour,
+        )
+
+    def parse_obs_space(self, path):
+        filename = os.path.basename(path)
+
+        if not filename.endswith(".nc"):
+            return None
+
+        return filename.removesuffix(".nc")
+
+    def is_valid_cycle_hour(self, hour: str) -> bool:
+        return hour in {"00", "06", "12", "18"}
+
+    # def old_scan_files(self, root_path):
+        # if not os.path.isdir(root_path):
+            # return []
+# 
+        # all_files = []
+        # for dirpath, dirnames, filenames in os.walk(root_path):
+            # if not dirnames:
+                # for filename in filenames:
+                    # full_path = os.path.join(dirpath, filename)
+                    # all_files.append(File.from_path(full_path))
+        # return all_files
+
+    def _scan_files(self, root_path):
+
+        if not os.path.isdir(root_path):
+            logger.warning(
+                f"Missing cycle directory: {root_path}"
+            )
+            return []
+
+        all_files = []
+
+        try:
+            for dirpath, dirnames, filenames in os.walk(root_path):
+                if not dirnames:
+                    for filename in filenames:
+
+                        full_path = os.path.join(
+                            dirpath,
+                            filename
+                        )
+
+                        try:
+                            file_obj = File.from_path(
+                                full_path
+                            )
+                            all_files.append(file_obj)
+
+                        except Exception:
+                            logger.exception(
+                                f"Failed reading file "
+                                f"{full_path}"
+                            )
+
+        except Exception:
+            logger.exception(
+                f"Failed walking directory "
+                f"{root_path}"
+            )
+
+        return all_files
