@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from ncdb.ds.db_base import Base
 
 from ncdb.ds.io.dataset_repository import DatasetRepository
-from ncdb.scanners.marine_da_scanner import MarineDAScanner as DefaultScanner
+# Import the registration lookup helper instead of a hardcoded concrete class
+from ncdb.scanners import get_scanner_class
 from .dataset import Dataset
 
 logger = logging.getLogger(__name__)
@@ -43,11 +44,14 @@ class Database:
         self,
         data_root: str,
         n_cycles: Optional[int],
-        scanner_cls=DefaultScanner,
+        scanner: str = "marine",  # Changed parameter from scanner_cls to string lookup key
         callback=None
     ):
 
         started_at = datetime.utcnow()
+
+        # Resolve the string descriptor name to the actual class via registry
+        scanner_cls = get_scanner_class(scanner)
 
         report = {
             "status": "running",
@@ -77,12 +81,13 @@ class Database:
             scanner = scanner_cls(data_root)
 
             for ds in scanner.datasets:
-                # print(f"scanner dataset {ds}")
+                logger.info(f"processing scanner dataset {ds}")
                 try:
                     self._repo.save_dataset(ds)
+                    logger.info(f"saved dataset {ds}")
                     # update in memory state of the dataset
                     self._repo.load_fields(ds)
-                    print(f"    LOADED  dataset {ds}")
+                    logger.info(f"    LOADED  dataset {ds}")
 
                     report["datasets"].append({
                         "name": ds.name,
@@ -123,8 +128,10 @@ class Database:
                         cycle.cycle_hour,
                         cycle.scan_results
                     )
+                    logger.info(f"Finished build_cycle {cycle_id}")
 
                     self._repo.save_scan(ds_cycle)
+                    logger.info(f"done save_scan {ds_cycle}")
 
                     report["cycles"].append({
                         "dataset": cycle.dataset.name,
