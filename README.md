@@ -1,19 +1,27 @@
-# EMC Repository Template
+# ncdb
 
-Getting all the right files in the right place can be a pain. 
-This is a simple template repository that you can use to ensure you have all the right files present in your repo.
+`ncdb` stands for NetCDF Database (utilizing SQLite). It is a lightweight, pure-domain Python library designed to perform computations with datasets, which are collections of NetCDF files representing observation spaces (`obsspaces`). 
 
-## Files you need
+Instead of allowing metadata to remain scattered across erratic file names, directory tree layouts, and the internal headers of raw NetCDF files, `ncdb` utilizes a compact database file to index and hold all metadata associated with your datasets in a single, structured location. Adopting `ncdb` completely eliminates the need for maintaining massive collections of nested YAML files, which traditionally serve as highly inefficient, static, and partial databases. 
 
-These should be at the top level of your repository:
+Customized **scanners** are provided to act as the architectural bridge, translating these chaotic real-world file layouts directly into the unified database representation. Beyond structural layout indexes, the library also computes and stores valuable derived data directly in the tracking database—such as the number of observations (`nobs`), maximums, minimums, and means for specified variables across your NetCDF files—enabling instant historical trend queries without repetitive disk I/O.
 
-* `README.md` - The `README.md` file should have a short section at the bottom
-  called "DISCLAIMER", with a really brief statement saying that code is provided on an "as is" basis, and the user assumes responsibility for its use.
-* `LICENSE` - The text of the `CC0` license.
-* `DISCLAIMER` - Disclaimer 
-   
-## License
+## Installation
 
-This project is part of NOAA-EMC Ecosystem. 
+1. Create and activate a virtual environment:
 
-See LICENSE and DISCLAIMER for details.
+```bash
+python -m venv venv
+source venv/bin/activate
+```
+
+2. Install ncdb directly from the repository:
+
+```bash
+pip install git+[https://github.com/NOAA-EMC/ncdb.git](https://github.com/NOAA-EMC/ncdb.git)
+```
+
+
+## Basic Usage
+
+See the example in api/examples/demo.py
