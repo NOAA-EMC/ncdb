@@ -18,7 +18,7 @@ source venv/bin/activate
 2. Install ncdb directly from the repository:
 
 ```bash
-pip install git+[https://github.com/NOAA-EMC/ncdb.git](https://github.com/NOAA-EMC/ncdb.git)
+pip install git+https://github.com/NOAA-EMC/ncdb.git
 ```
 
 
