@@ -9,8 +9,8 @@ from .obsforge_marine_scanner import ObsForgeMarineScanner
 
 # Define the central Registry Mapping
 SCANNERS = {
-    "marine": MarineDAScanner,
-    "obsforge": ObsForgeScanner,
+    "marine_da": MarineDAScanner,
+    # "obsforge": ObsForgeScanner,
     "obsforge_marine": ObsForgeMarineScanner,
 }
 

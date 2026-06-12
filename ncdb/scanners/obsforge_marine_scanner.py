@@ -7,6 +7,8 @@ from datetime import datetime
 from .base import BaseScanner
 from ncdb.ds.file import File
 from ncdb.ds.dataset import Dataset
+from ncdb.ds.netcdf_structure import NetcdfStructure
+from ncdb.ds.obs_space import ObsSpace
 
 
 class ObsForgeMarineScanner(BaseScanner):
@@ -101,6 +103,7 @@ class ObsForgeMarineScanner(BaseScanner):
         """
         Scans all files recursively underneath the 'ocean' directory level.
         All sub-categories are loaded into this singular model dataset.
+        Returns a list of (File, ObsSpace) aggregates.
         """
         logger.info(f"Scanning marine dataset {dataset.name} cycle {cycle_date}, {cycle_hour}")
         
@@ -128,10 +131,19 @@ class ObsForgeMarineScanner(BaseScanner):
                 if not os.path.isfile(full):
                     continue
 
+                obs_space_name = self.parse_obs_space(full)
+                if not obs_space_name:
+                    continue
+
+                # Physical I/O isolated at the library perimeter boundary
+                nc_structure = NetcdfStructure.from_file(full)
+                if nc_structure is None:
+                    logger.warning(f"Unable to read netcdf structure for {full}")
+                    continue
+
                 file_obj = File.from_path(full)
-                obs_space = self.parse_obs_space(full)
+                obs_space = ObsSpace(obs_space_name, nc_structure)
                 
-                if obs_space:
-                    results.append((file_obj, obs_space))
+                results.append((file_obj, obs_space))
 
         return results

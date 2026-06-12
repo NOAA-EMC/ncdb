@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from ncdb.ds.db_base import Base
 
 from ncdb.ds.io.dataset_repository import DatasetRepository
-# Import the registration lookup helper instead of a hardcoded concrete class
+
 from ncdb.scanners import get_scanner_class
 from .dataset import Dataset
 
@@ -44,7 +44,7 @@ class Database:
         self,
         data_root: str,
         n_cycles: Optional[int],
-        scanner: str = "marine",  # Changed parameter from scanner_cls to string lookup key
+        scanner: str = "marine",
         callback=None
     ):
 
@@ -203,13 +203,6 @@ class Database:
             for d in datasets
         ]
 
-    # def datasets(self) -> list[Dataset]:
-        # return [
-            # Dataset(d, self._repo)
-            # for d in self._repo.get_all_datasets()
-        # ]
-
-
     def dataset(self, key, root_dir=None):
 
         datasets = self._repo.get_all_datasets()
@@ -258,160 +251,3 @@ class Database:
         raise TypeError(
             f"Unsupported dataset key type: {type(key)}"
         )
-
-
-    def try_dataset(
-        self,
-        name: str | None = None,
-        root_dir: str | None = None,
-        id: int | None = None,
-    ):
-        """
-        Load a dataset.
-
-        Parameters
-        ----------
-        id : int
-            Dataset database id.
-
-        name : str
-            Dataset name.
-
-        root_dir : str
-            Dataset root directory.
-        """
-
-        datasets = self._repo.get_all_datasets()
-
-        #
-        # lookup by id
-        #
-        if id is not None:
-            matches = [
-                d for d in datasets
-                if d.id == id
-            ]
-            if not matches:
-                raise ValueError(
-                    f"Dataset id '{id}' not found"
-                )
-            return Dataset(matches[0], self._repo)
-
-        #
-        # lookup by name/root_dir
-        #
-        if name is not None:
-            matches = [
-                d for d in datasets
-                if d.name == name
-            ]
-            if root_dir is not None:
-                matches = [
-                    d for d in matches
-                    if d.root_dir == root_dir
-                ]
-            if len(matches) == 0:
-                raise ValueError(
-                    f"Dataset not found "
-                    f"name={name} "
-                    f"root_dir={root_dir}"
-                )
-            if len(matches) > 1:
-                raise ValueError(
-                    f"Multiple datasets found "
-                    f"name={name} "
-                    f"root_dir={root_dir}"
-                )
-
-            return Dataset(matches[0], self._repo)
-
-        raise ValueError(
-            "dataset() requires either "
-            "id or name"
-        )
-
-##################
-
-    def old_dataset(self, key):
-        """
-        Load dataset by id or name.
-
-        Parameters
-        ----------
-        key : int | str
-            Dataset id or dataset name.
-        """
-
-        datasets = self._repo.get_all_datasets()
-
-        #
-        # lookup by integer id
-        #
-        if isinstance(key, int):
-            for d in datasets:
-                if d.id == key:
-                    return Dataset(d, self._repo)
-
-            raise ValueError(f"Dataset id '{key}' not found")
-
-        #
-        # lookup by name
-        #
-        if isinstance(key, str):
-            matches = [
-                d for d in datasets
-                if d.name == key
-            ]
-
-            if len(matches) == 0:
-                raise ValueError(f"Dataset '{key}' not found")
-
-            #
-            # temporary behavior:
-            # return first match
-            #
-            if len(matches) > 1:
-                logger.warning(
-                    f"Multiple datasets named '{key}' found; "
-                    f"returning first match"
-                )
-
-            return Dataset(matches[0], self._repo)
-
-        raise TypeError(
-            f"Unsupported dataset key type: {type(key)}"
-        )
-
-    def old_cycles(self, dataset_name: Optional[str] = None):
-        if dataset_name:
-            ds = self.dataset(dataset_name)
-            self._repo.load_cycles(ds)
-            datasets = [ds]
-        else:
-            datasets = self._repo.get_all_datasets()
-            for ds in datasets:
-                self._repo.load_cycles(ds)
-
-        seen = set()
-        result = []
-
-        for ds in datasets:
-            for c in ds.cycles:
-                key = (c.cycle_date, c.cycle_hour)
-                if key in seen:
-                    continue
-                seen.add(key)
-                result.append(c)
-
-        # sort globally
-        result.sort(key=lambda c: (c.cycle_date, c.cycle_hour))
-
-        return [
-            datetime(
-                c.cycle_date.year,
-                c.cycle_date.month,
-                c.cycle_date.day,
-                int(c.cycle_hour),
-            )
-            for c in result
-        ]

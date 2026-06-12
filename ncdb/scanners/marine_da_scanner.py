@@ -11,6 +11,9 @@ from ncdb.ds.dataset import Dataset
 
 from .base import BaseScanner
 
+from ncdb.ds.netcdf_structure import NetcdfStructure
+from ncdb.ds.obs_space import ObsSpace
+
 
 class MarineDAScanner(BaseScanner):
 
@@ -47,35 +50,6 @@ class MarineDAScanner(BaseScanner):
         logger.info(f"Discovered {len(datasets)} datasets {[d.name for d in datasets]}")
 
         return datasets
-
-    
-    '''
-    def old_discover_datasets(self) -> None:
-        if not os.path.exists(self.root_dir):
-            logger.error(
-                f"Data root not found: {self.root_dir}"
-            )
-            self.datasets = []
-
-        dataset_names = set()
-
-        for entry in os.listdir(self.root_dir):
-            full_path = os.path.join(self.root_dir, entry)
-
-            if not os.path.isdir(full_path):
-                continue
-
-            if "." in entry:
-                prefix = entry.split(".")[0]
-                dataset_names.add(prefix)
-
-        self.datasets = [
-            Dataset(name=name, root_dir=self.root_dir)
-            for name in sorted(dataset_names)
-        ]
-
-        logger.info(f"Discovered {len(self.datasets)} datasets {[d.name for d in self.datasets]}")
-    '''
 
     def discover_cycles(self, dataset: Dataset):
 
@@ -146,6 +120,39 @@ class MarineDAScanner(BaseScanner):
         return discovered
 
     def scan_cycle(self, dataset: Dataset, cycle_date, cycle_hour):
+        logger.info(f"Scanning {dataset.name} cycle {cycle_date}, {cycle_hour}")
+
+        cycle_dir = self.build_cycle_dir(
+            dataset.name, cycle_date, cycle_hour
+        )
+
+        files = self._scan_files(cycle_dir)
+        selected = self.select_files(files, dataset.name, cycle_hour)
+
+        results = []
+        for f in selected:
+            obs_space_name = self.parse_obs_space(f.path)
+            if obs_space_name:
+                # Physical disk I/O happens safely here at the edge of the architecture
+                nc_structure = NetcdfStructure.from_file(f.path)
+                if nc_structure is None:
+                    logger.warning(f"Unable to read netcdf structure for {f.path}")
+                    continue
+                
+                obs_space = ObsSpace(obs_space_name, nc_structure)
+                results.append((f, obs_space))  # Returns (File, ObsSpace)
+
+        logger.info(
+            f"Dataset={dataset.name} "
+            f"Cycle={cycle_date} {cycle_hour} "
+            f"Files={len(files)} "
+            f"Selected={len(selected)} "
+            f"Results={len(results)}"
+        )
+
+        return results
+
+    def old_scan_cycle(self, dataset: Dataset, cycle_date, cycle_hour):
         logger.info(f"Scanning {dataset.name} cycle {cycle_date}, {cycle_hour}")
 
         cycle_dir = self.build_cycle_dir(

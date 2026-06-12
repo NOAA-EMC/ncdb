@@ -50,26 +50,6 @@ class DatasetRepository:
 
         return orm
 
-    def old_save_dataset(self, dataset: Dataset):
-        existing = self.session.scalar(
-            select(DatasetORM).where(DatasetORM.name == dataset.name)
-        )
-
-        if existing:
-            dataset.id = existing.id
-            return existing
-
-        orm = DatasetORM(
-            name=dataset.name,
-            root_dir=dataset.root_dir
-        )
-
-        self.session.add(orm)
-        self.session.flush()
-
-        dataset.id = orm.id
-        return orm
-
     def save_cycle(self, cycle):
         # logger.info(f"save_cycle: {cycle}")
 

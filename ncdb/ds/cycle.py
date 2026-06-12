@@ -1,19 +1,11 @@
-import os
 import logging
-from datetime import date, datetime
-from typing import Optional, List, Tuple
-from pathlib import Path
-
-from sqlalchemy import select, and_
-from sqlalchemy.orm import Session
-
-from .dataset_orm import CycleORM, DatasetFileORM
-
-from .obs_space import ObsSpace
-from .field import Field
-from .dataset_file import DatasetFile
-
 logger = logging.getLogger(__name__)
+
+from datetime import date, datetime
+from typing import Optional, List
+
+from .dataset_orm import CycleORM
+from .dataset_file import DatasetFile
 
 
 '''
@@ -81,7 +73,6 @@ class Cycle:
         # First compare by cycle_date, then by cycle_hour
         if self.cycle_date != other.cycle_date:
             return self.cycle_date < other.cycle_date
-        # return self.cycle_hour < other.cycle_hour
         return int(self.cycle_hour) < int(other.cycle_hour)
 
     def add_file(self, file):
@@ -104,24 +95,4 @@ class Cycle:
             dataset_id=self.dataset.id,
             cycle_date=self.cycle_date,
             cycle_hour=self.cycle_hour
-        )
-
-#######################################################
-
-    # def to_db(self, repo):
-        # repo.save_cycle(self)
-        # repo.save_cycle_files(self)
-        # logger.info(f"to_db {self.dataset.name} {self}")
-
-    @staticmethod
-    def old_cycle_dir(dataset, cycle_date, cycle_hour):
-        """
-        Compute the directory path for a cycle
-        without instantiating a Cycle.
-        """
-        date_str = cycle_date.strftime("%Y%m%d")
-        return os.path.join(
-            dataset.root_dir,
-            f"{dataset.name}.{date_str}",
-            cycle_hour,
         )

@@ -1,17 +1,11 @@
 import logging
-from typing import Optional, Dict
-from pathlib import Path
+logger = logging.getLogger(__name__)
 
-from sqlalchemy import select, and_
-from sqlalchemy.orm import Session
+from typing import Optional
 
 from .dataset_orm import DatasetFileORM
-
 from .netcdf_file import NetcdfFile
 from .file import File
-# from ds.io.dataset_repository import DatasetRepository
-
-logger = logging.getLogger(__name__)
 
 
 '''
@@ -58,7 +52,7 @@ class DatasetFile:
     @classmethod
     def from_orm(
         cls, 
-        session: Session, 
+        session, # Pass-through parameter, no explicit SQLAlchemy import needed
         orm: DatasetFileORM, 
         dataset_field: "Field", 
         dataset_cycle: "Cycle"
@@ -100,74 +94,6 @@ class DatasetFile:
             file_id=self.file.id
         )
 
-    def old_to_db(self, session: Session) -> "DatasetFileORM":
-        """
-        Ensure this DatasetFile exists in the DB. Returns the ORM object.
-        Sets self.id.
-        """
-        # Already persisted?
-        if self.id is not None:
-            existing = session.get(DatasetFileORM, self.id)
-            if existing:
-                return existing
-
-        # logger.info(f"to_db {self}")
-
-        # Assume already persisted
-        assert self.dataset_field.id is not None
-        assert self.dataset_cycle.id is not None
-
-        # Persist underlying Field
-        # if self.dataset_field.id is None:
-            # self.dataset_field.to_db(session)
-        # Persist underlying Cycle
-        # if self.dataset_cycle.id is None:
-            # self.dataset_cycle.to_db(session)
-
-        # Persist the physical file
-        if self.file.id is None:
-            self.file.to_db(session)
-
-        # Persist NetCDF file, structure, attributes, derived attributes
-        if self.netcdf_file:
-            try:
-                self.netcdf_file.to_db(session)
-            except Exception as e:
-                logger.error(
-                    f"Failed to persist NetCDF data for {self.file.path}: {e}"
-                )
-
-        # Ensure session sees all IDs
-        session.flush()
-
-        # Check if a row already exists
-        existing = session.scalar(
-            select(DatasetFileORM).where(
-                and_(
-                    DatasetFileORM.dataset_field_id == self.dataset_field.id,
-                    DatasetFileORM.dataset_cycle_id == self.dataset_cycle.id,
-                    DatasetFileORM.file_id == self.file.id
-                )
-            )
-        )
-
-        if existing:
-            self.id = existing.id
-            return existing
-
-        # Create ORM row
-        orm = DatasetFileORM(
-            dataset_field_id=self.dataset_field.id,
-            dataset_cycle_id=self.dataset_cycle.id,
-            file_id=self.file.id
-        )
-        session.add(orm)
-        session.flush()
-        self.id = orm.id
-
-        # logger.info(f"done .... to_db {self}")
-        return orm
-
     def get_surface_variable_data(self, variable_path):
         nc_file = self.netcdf_file
         variable_name = Path(variable_path).name
@@ -181,10 +107,6 @@ class DatasetFile:
             "lats": nc_file.get_variable("/MetaData/latitude"),
             "units": nc_file.get_node_attribute(variable_path, "units")
         }
-
-    # derived attributes
-    # def get_derived(self, path: str, name: str):
-        # return self.netcdf_file.get_derived(path, name)
 
     def has_derived(self, path: str, name: str):
         return self.netcdf_file.has_derived(path, name)

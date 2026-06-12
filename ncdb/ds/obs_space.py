@@ -1,14 +1,12 @@
-import os
-import re
 import logging
+logger = logging.getLogger(__name__)
+
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .obs_space_orm import ObsSpaceORM
 from .netcdf_structure import NetcdfStructure
-
-logger = logging.getLogger(__name__)
 
 
 class ObsSpace:

@@ -2,18 +2,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 from typing import List, Optional
-from datetime import datetime
-import pandas as pd
 
-from sqlalchemy import select, and_
-from sqlalchemy.orm import Session
-
-from .dataset_orm import (
-    FieldORM
-    # CycleORM,
-    # DatasetFileORM
-)
-
+from .dataset_orm import FieldORM
 from .dataset_file import DatasetFile
 
 
@@ -61,13 +51,6 @@ class Field:
             dataset_id=self.dataset.id,
             obs_space_id=self.obs_space.id
         )
-
-    # def find_file_for_time(self, time: datetime) -> Optional[DatasetFile]:
-        # for f in self.files:
-            # if f.dataset_cycle.datetime == time:
-                # return f
-        # return None
-
 
     def find_file_for_time(self, date, hour: int):
         """

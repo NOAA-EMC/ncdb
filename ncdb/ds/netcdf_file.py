@@ -4,7 +4,7 @@ import numpy as np
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 
-from .file_orm import FileORM
+# from .file_orm import FileORM
 from .netcdf_structure_orm import (
     NetcdfStructureAttributeORM,
     NetcdfNodeORM
@@ -58,7 +58,8 @@ class NetcdfFile:
     def from_orm(
         cls, 
         session: Session, 
-        file_orm: FileORM, 
+        # file_orm: FileORM, 
+        file_orm,
         structure: NetcdfStructure
     ) -> "NetcdfFile":
         # 1. Base identity
@@ -180,7 +181,7 @@ class NetcdfFile:
             )
 
     def to_db(self, session: Session) -> None:
-        # the file and the structure mustah ve been already
+        # the file and the structure must have been already
         # persisted before persisting the file
         self.structure.to_db(session) 
         self.file.to_db(session)
@@ -251,24 +252,6 @@ class NetcdfFile:
                 except Exception as e:
                     logger.error(f"Failed to persist derived stat '{name}' for node '{path}': {e}")
 
-    def new_get_variable(self, path: str) -> np.ndarray:
-        """
-        Retrieves raw numeric data for a variable at the given path.
-        """
-        node = self.structure.find_node(path)
-        if not node or node.node_type != "VARIABLE":
-            raise ValueError(f"Path '{path}' is not a valid VARIABLE node")
-
-        try:
-            with netCDF4.Dataset(self.file.path, 'r') as ds:
-                values = ds[path][:]
-                return values
-
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to read variable '{path}' from {self.file.path}: {e}"
-            )
-
     def get_variable(self, path: str, filter_out_masked: bool = True) -> Optional[np.ndarray]:
         """
         Retrieves the numeric data for a variable at the given path.
@@ -328,13 +311,8 @@ class NetcdfFile:
         # 2. Return the specific attribute value
         return node_attrs.get(attr_name)
 
-
-
     def has_derived(self, path: str, name: str) -> bool:
         return name in self.derived_values.get(path, {})
-
-    # def get_derived(self, path: str, name: str) -> Optional[float]:
-        # return self.derived_values.get(path, {}).get(name)
 
     def list_derived(self, path: str) -> List[str]:
         return list(self.derived_values.get(path, {}).keys())

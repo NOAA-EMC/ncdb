@@ -16,16 +16,14 @@ BASE_DIR = Path(__file__).parent
 DB_DIR = BASE_DIR
 
 
-from ncdb.scanners.marine_da_scanner import MarineDAScanner
-SCANNER = MarineDAScanner
+SCANNER = "marine_da"
 DATA_ROOT = "/scratch4/NCEPDEV/global/John.Steffen/hpss_arch/cp4.03-parallel-3dvar"
 DATA_ROOT4 = "/scratch4/NCEPDEV/global/John.Steffen/hpss_arch/cp4.04-parallel-3dvar"
-DB_PATH = f"{DB_DIR}/cp4.03-parqllel-3dvar.db"
+DB_PATH = f"{DB_DIR}/marine-da.db"
 
 
 '''
-from ncdb.scanners.obsforge_scanner import ObsForgeScanner
-SCANNER = ObsForgeScanner
+SCANNER = "obsforge"
 DATA_ROOT="/lfs/h2/emc/da/noscrub/emc.da/obsForge/COMROOT/realtime"
 DB_PATH = f"{DB_DIR}/emcda.db"
 '''
@@ -40,13 +38,13 @@ def main():
     db.scan(
         data_root=DATA_ROOT,
         n_cycles=-2,
-        scanner_cls=SCANNER
+        scanner=SCANNER
     )
 
     db.scan(
         data_root=DATA_ROOT4,
         n_cycles=-2,
-        scanner_cls=SCANNER
+        scanner=SCANNER
     )
 
     print("\n=== Datasets ===")

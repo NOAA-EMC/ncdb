@@ -1,28 +1,11 @@
-import os
-import re
 import logging
 logger = logging.getLogger(__name__)
 
-from datetime import datetime, date
-from typing import List, Optional, Tuple, Set
+from typing import List, Optional
 
-from sqlalchemy import (
-    select,
-    and_
-)
-from sqlalchemy.orm import Session
-
-from .dataset_orm import (
-    DatasetORM, 
-    CycleORM, 
-    FieldORM,
-    DatasetFileORM
-)
-from .obs_space_orm import ObsSpaceORM
-
+from .dataset_orm import DatasetORM
 from .file import File
 from .obs_space import ObsSpace
-from .netcdf_structure import NetcdfStructure
 from .cycle import Cycle
 from .field import Field
 from .dataset_file import DatasetFile
@@ -127,61 +110,23 @@ class Dataset:
             root_dir=self.root_dir,
         )
 
-    def to_db_self(self, session):
-        from .dataset_orm import DatasetORM
-
-        # logger.info("Dataset.to_db_self")
-
-        # Check if this dataset already exists
-        existing = session.scalar(
-            select(DatasetORM).where(DatasetORM.name == self.name)
-        )
-
-        if existing:
-            # Update the id to link children later
-            self.id = existing.id
-            return existing
-
-        orm_obj = self.to_orm()
-        session.add(orm_obj)
-        session.flush()  # Ensure id is assigned
-        self.id = orm_obj.id
-        return orm_obj
-
-    def to_db(self, repo, n: Optional[int] = None) -> None:
-        repo.save_dataset(self)
-
-        for field in self.fields:
-            repo.save_field(field)
-
-        cycles = Dataset._select_cycles(self.cycles, n)
-        for cycle in cycles:
-            repo.save_cycle(cycle)
-
     def add_cycle(self, cycle):
         self.cycles.append(cycle)
         self.cycles.sort()
 
-    def build_cycle(self, cycle_date, cycle_hour, scan_results):
-        # logger.info(f"build_cycle: Processing {len(scan_results)} scan results")
-
+    def build_cycle(self, cycle_date, cycle_hour, prepared_results):
+        """
+        Pure memory assembly of a cycle.
+        prepared_results is a list of tuples: (file, obs_space)
+        """
         cycle = Cycle(self, cycle_date, cycle_hour)
-        # logger.info("build_cycle:")
 
-        for file, obs_space_name in scan_results:
-            nc_structure = NetcdfStructure.from_file(file.path)
-            # logger.info(f"FILE = {file.path}\nHASH = {nc_structure.structure_hash}")
-            if nc_structure is None:
-                logger.warning(f"Unable to read netcdf structure for {f.path}") 
-                continue
-            obs_space = ObsSpace(obs_space_name, nc_structure)
-
+        for file, obs_space in prepared_results:
             field = self.get_or_create_field(obs_space)
             if not field:
                 continue
 
             ds_file = DatasetFile.from_file(file, field, cycle)
-
             field.add_file(ds_file)
             cycle.add_file(ds_file)
 
@@ -201,29 +146,3 @@ class Dataset:
         new_field = Field(self, obs_space)
         self.fields.append(new_field)
         return new_field
-
-
-    def load_cycles_from_db(self, session: Session) -> None:
-        """
-        Loads all Cycle identities (Date/Hour) without loading files.
-        """
-        if self.id is None:
-            logger.error(f"Cannot load cycles for dataset '{self.name}': ID is missing.")
-            return
-
-        # Query all cycles for this dataset
-        stmt = (
-            select(CycleORM)
-            .where(CycleORM.dataset_id == self.id)
-            .order_by(CycleORM.cycle_date.desc(), CycleORM.cycle_hour.desc())
-        )
-        cycle_orms = session.scalars(stmt).all()
-        logger.info(f"QUERY: Dataset ID is {self.id}")
-        logger.info(f"RESULT: Found {len(cycle_orms)} cycles in DB")
-
-        self.cycles = []
-        for c_orm in cycle_orms:
-            cycle_domain = Cycle.from_orm(c_orm, self)
-            self.cycles.append(cycle_domain)
-
-        logger.info(f"Found {len(self.cycles)} cycles for dataset '{self.name}'")

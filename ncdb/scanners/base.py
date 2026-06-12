@@ -11,10 +11,10 @@ from ncdb.ds.file import File
 from ncdb.ds.dataset import Dataset
 
 # the following should be moved out and refactored
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-from ncdb.ds.db_base import Base
-from ncdb.ds.io.dataset_repository import DatasetRepository
+# from sqlalchemy import create_engine
+# from sqlalchemy.orm import Session
+# from ncdb.ds.db_base import Base
+# from ncdb.ds.io.dataset_repository import DatasetRepository
 
 
 class ScanCycle:
@@ -58,18 +58,6 @@ class BaseScanner(ABC):
             return cycles[n_cycles:]  # last N cycles
 
         return cycles[:n_cycles]
-
-    # def old_scan_dataset_cycles(self, n_cycles: Optional[int]):
-        # for dataset in self.datasets:
-            # cycles = self.discover_cycles(dataset)
-            # selected = self.select_cycles(cycles, n_cycles)
-# 
-            # for cycle_date, cycle_hour in selected:
-                # scan_results = self.scan_cycle(
-                    # dataset, cycle_date, cycle_hour
-                # )
-                # yield ScanCycle(dataset, cycle_date, cycle_hour, scan_results)
-
 
     def scan_dataset_cycles(self, n_cycles: Optional[int]):
         for dataset in self.datasets:
