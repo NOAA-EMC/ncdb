@@ -102,6 +102,7 @@ class Field:
 
         raise AttributeError(f"{name} not found")
 
+    @property
     def cycles(self):
         if self._repo is None:
             raise RuntimeError(

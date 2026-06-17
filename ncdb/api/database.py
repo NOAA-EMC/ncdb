@@ -44,7 +44,7 @@ class Database:
         self,
         data_root: str,
         n_cycles: Optional[int],
-        scanner: str = "marine",
+        scanner: str,
         callback=None
     ):
 
@@ -81,13 +81,13 @@ class Database:
             scanner = scanner_cls(data_root)
 
             for ds in scanner.datasets:
-                logger.info(f"processing scanner dataset {ds}")
+                # logger.info(f"processing scanner dataset {ds}")
                 try:
                     self._repo.save_dataset(ds)
-                    logger.info(f"saved dataset {ds}")
+                    # logger.info(f"saved dataset {ds}")
                     # update in memory state of the dataset
                     self._repo.load_fields(ds)
-                    logger.info(f"    LOADED  dataset {ds}")
+                    # logger.info(f"    LOADED  dataset {ds}")
 
                     report["datasets"].append({
                         "name": ds.name,
@@ -128,10 +128,10 @@ class Database:
                         cycle.cycle_hour,
                         cycle.scan_results
                     )
-                    logger.info(f"Finished build_cycle {cycle_id}")
+                    # logger.info(f"Finished build_cycle {cycle_id}")
 
                     self._repo.save_scan(ds_cycle)
-                    logger.info(f"done save_scan {ds_cycle}")
+                    # logger.info(f"done save_scan {ds_cycle}")
 
                     report["cycles"].append({
                         "dataset": cycle.dataset.name,
