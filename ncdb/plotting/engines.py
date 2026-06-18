@@ -62,20 +62,6 @@ class MatplotlibEngine(PlottingEngine):
     def draw_shaded_band(self, x_data, y_lower, y_upper, label: str, color: str, alpha: float) -> None:
         self.ax.fill_between(x_data, y_lower, y_upper, color=color, alpha=alpha, label=label)
 
-    def oldsave(self, out_path: str) -> str:
-        # Dynamic axis limit protection logic
-        if hasattr(self.ax, 'get_lines') and self.ax.get_lines():
-            # Apply padding logic safely if time series axes exist
-            self.fig.autofmt_xdate()
-            self.ax.legend(loc='upper left', fontsize='small', frameon=True)
-            self.ax.xaxis.set_major_locator(mdates.AutoDateLocator())
-            self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-            
-        plt.tight_layout()
-        plt.savefig(out_path, dpi=150 if 'surface' in out_path else 100, bbox_inches='tight')
-        plt.close(self.fig)
-        return out_path
-
     def save(self, out_path: str) -> str:
             # Dynamic axis limit protection logic
             if hasattr(self.ax, 'get_lines') and self.ax.get_lines():

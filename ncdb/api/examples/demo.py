@@ -37,31 +37,35 @@ def main():
 
     db.scan(
         data_root=DATA_ROOT,
-        n_cycles=-2,
+        n_cycles=-11,
         scanner=SCANNER
     )
 
-    db.scan(
-        data_root=DATA_ROOT4,
-        n_cycles=-2,
-        scanner=SCANNER
-    )
+    # db.scan(
+        # data_root=DATA_ROOT4,
+        # n_cycles=-2,
+        # scanner=SCANNER
+    # )
 
     print("\n=== Datasets ===")
     print(db.datasets())
 
     # gdas = db.dataset("gdas")
-
     gdas_datasets = db.datasets("gdas")
     print("\n=== gdas Datasets ===")
     for ds in gdas_datasets:
         print(ds)
     gdas = gdas_datasets[0]
 
-    print(f"\n=== loaded dataset {gdas} ===\n")
+    cycles = gdas.cycles
+    print(f"Available cycles for {gdas}:")
+    for c in cycles:
+        print(c)
+
+    # print(f"\n=== loaded dataset {gdas} ===\n")
 
     obsspace_names = [o.name for o in gdas.obsspaces()]
-    print(f"{len(obsspace_names)} obs spaces:")
+    print(f"{len(obsspace_names)} obs spaces in {gdas}:")
     for name in sorted(obsspace_names):
         print(f"- {name}")
 
@@ -78,9 +82,12 @@ def main():
     temp = sst.field("/ObsValue/seaSurfaceTemperature")
     # ice = sst.field("ombg/seaIceFraction")
 
-    cycles = gdas.cycles
-    print(f"Available cycles for {gdas}:")
-    for c in cycles:
+    rads_adt_c2 = gdas.obsspace("rads_adt_c2")
+    # rads_adt_c2_ombg_adt = rads_adt_c2.variable("/ombg/absoluteDynamicTopography")
+    adt = rads_adt_c2.field("/ombg/absoluteDynamicTopography")
+    adt_cycles = adt.cycles
+    print(f"Available cycles for {adt}:")
+    for c in adt_cycles:
         print(c)
 
     # t = datetime(2026, 4, 7, 6)
@@ -116,8 +123,13 @@ def main():
     plot_path = temp_max.plot("jtemp_max.png")
     print(f"History plot generated at {plot_path}")
 
-    nobs = temp.nobs
-    plot_path = nobs.plot("jnobs.png")
+    temp_mean = temp.mean
+    print(f"Attributes for {temp}:\n{temp.list_attributes()}")
+    temp_std_dev = temp.std_dev
+    plot_path = temp_mean.plot("jtemp_band.png", band = temp_std_dev)
+
+    # nobs = temp.nobs
+    # plot_path = nobs.plot("jnobs.png")
 
     c = FieldCollection()
     c.add(temp.min)

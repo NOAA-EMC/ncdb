@@ -120,7 +120,7 @@ class MarineDAScanner(BaseScanner):
         return discovered
 
     def scan_cycle(self, dataset: Dataset, cycle_date, cycle_hour):
-        logger.info(f"Scanning {dataset.name} cycle {cycle_date}, {cycle_hour}")
+        # logger.info(f"Scanning {dataset.name} cycle {cycle_date}, {cycle_hour}")
 
         cycle_dir = self.build_cycle_dir(
             dataset.name, cycle_date, cycle_hour
@@ -143,40 +143,15 @@ class MarineDAScanner(BaseScanner):
                 results.append((f, obs_space))  # Returns (File, ObsSpace)
 
         logger.info(
-            f"Dataset={dataset.name} "
-            f"Cycle={cycle_date} {cycle_hour} "
-            f"Files={len(files)} "
-            f"Selected={len(selected)} "
-            f"Results={len(results)}"
-        )
-
-        return results
-
-    def old_scan_cycle(self, dataset: Dataset, cycle_date, cycle_hour):
-        logger.info(f"Scanning {dataset.name} cycle {cycle_date}, {cycle_hour}")
-
-        cycle_dir = self.build_cycle_dir(
-            dataset.name, cycle_date, cycle_hour
-        )
-
-        files = self._scan_files(cycle_dir)
-        selected = self.select_files(files, dataset.name, cycle_hour)
-
-        results = []
-        for f in selected:
-            name = self.parse_obs_space(f.path)
-            if name:
-                results.append((f, name))
-
-        # logger.info(f"Selected files: {len(selected)}")
-        # logger.info(f"Scan results: {len(results)}")
-
-        logger.info(
-            f"Dataset={dataset.name} "
-            f"Cycle={cycle_date} {cycle_hour} "
-            f"Files={len(files)} "
-            f"Selected={len(selected)} "
-            f"Results={len(results)}"
+            f"Scanned "
+            f"{cycle_date} {cycle_hour} "
+            f"{dataset.name} "
+            f"({len(results)} files)"
+            # f"Dataset={dataset.name} "
+            # f"Cycle={cycle_date} {cycle_hour} "
+            # f"Files={len(files)} "
+            # f"Selected={len(selected)} "
+            # f"Results={len(results)}"
         )
 
         return results

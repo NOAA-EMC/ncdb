@@ -98,7 +98,7 @@ class HistoryPlotStrategy(PlotStrategy):
         engine.initialize(title=self.title, y_label=self.y_label)
         v_arr, d_arr = self.df[self.val_col], self.df.index
 
-        # MODE 1: PER-POINT PHYSICAL VARIANCE
+        # MODE 1: Explicit Companion Field Band (e.g., Mean ± StdDev)
         if self.std_col and self.std_col in self.df.columns:
             s_arr = self.df[self.std_col]
             lower = v_arr - s_arr
@@ -109,7 +109,7 @@ class HistoryPlotStrategy(PlotStrategy):
             engine.draw_shaded_band(d_arr, lower, upper, "±1σ (Spatial)", '#3498db', 0.3)
             engine.draw_line(d_arr, v_arr, "Mean", '#2980b9')
 
-        # MODE 2: TRAILING MOVING HISTORICAL CONSTRAINTS
+        # MODE 2: Trailing Moving Historical Window Band
         elif self.use_moving_avg:
             roll = v_arr.rolling(window=self.window_size, min_periods=1)
             m_val, m_std = roll.mean(), roll.std()
@@ -121,14 +121,9 @@ class HistoryPlotStrategy(PlotStrategy):
             engine.draw_line(d_arr, m_val, "Moving Avg", '#e67e22')
             engine.draw_shaded_band(d_arr, lower, m_val + m_std, "MA ±1σ", '#e67e22', 0.15)
 
-        # MODE 3: FIXED STANDALONE GLOBAL REFERENCING
+        # MODE 3: Clean Single Trendline (No Band Specified)
         else:
-            g_mean, g_std = v_arr.mean(), v_arr.std()
-            lower_bound = max(0, g_mean - g_std) if self.clamp_bottom else g_mean - g_std
-            
             engine.draw_line(d_arr, v_arr, "Value", '#2980b9')
-            engine.draw_line(d_arr, [g_mean]*len(d_arr), f'Avg ({g_mean:.1f})', '#e67e22', linewidth=1.0, linestyle="--")
-            engine.draw_shaded_band(d_arr, [lower_bound]*len(d_arr), [g_mean + g_std]*len(d_arr), "±1σ (Temporal)", '#e67e22', 0.15)
 
         return engine.save(out_path)
 

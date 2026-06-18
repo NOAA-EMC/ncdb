@@ -75,7 +75,7 @@ class Database:
             message = f"Scanning data root: {data_root}"
             if callback:
                 callback(message)
-            logger.info(message)
+            # logger.info(message)
 
             # discover datasets
             scanner = scanner_cls(data_root)
@@ -117,11 +117,10 @@ class Database:
                 )
 
                 try:
+                    message = f"Scanning cycle: {cycle_id}"
                     if callback:
-                        callback(f"Scanning cycle {cycle_id}")
-                    logger.info(
-                        f"Scanning cycle {cycle_id}"
-                    )
+                        callback(message)
+                    # logger.info(message)
 
                     ds_cycle = cycle.dataset.build_cycle(
                         cycle.cycle_date,

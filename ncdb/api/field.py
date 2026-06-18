@@ -5,6 +5,9 @@ import os
 from datetime import datetime
 from .value import Value
 
+from ncdb.ds.services.field_data_service import FieldDataService
+from ncdb.plotting.plot_generator import PlotGenerator
+
 # A field is a time-dependent scalar field.
 # it could be a single scalar (derived attribute)
 # or it could be a field over a 2d geographic domain
@@ -31,7 +34,6 @@ class Field:
 # 
         date = time.date()
         hour = time.hour
-        # ds_file = self._field.find_file_for_time(date, hour)
         ds_file = self._repo.load_file_for_field_and_cycle(
             self._field,
             date,
@@ -46,8 +48,6 @@ class Field:
 
         # --- base variable ---
         if self._derived_name is None:
-            # return ds_file.get_variable(self._variable_path)
-
             data = ds_file.get_variable(self._variable_path)
 
             # minimal coordinate resolution (temporary)
@@ -77,7 +77,6 @@ class Field:
                 f"Derived attribute '{self._derived_name}' not found for {self._variable_path}"
             )
 
-        # return value
         return Value(
             data=value,
             coords={},   # scalar → no spatial coords
@@ -125,7 +124,57 @@ class Field:
         attrs = self._field.list_derived_attributes(self._variable_path)
         return sorted(attrs)
 
-    def plot(self, out_file, t1=None, t2=None, n_cycles=None):
+    def plot(self, out_file, band=None, t1=None, t2=None, n_cycles=None):
+        if self._derived_name is None:
+            raise ValueError("Field.plot() only supported for derived fields")
+
+        if self._repo is None:
+            raise RuntimeError("Field.plot() requires repository access")
+
+        session = self._repo.session
+
+        service = FieldDataService(session)
+
+        # --- fetch full dataframe ---
+        df = service.get_variable_derived_data(
+            self._field,
+            self._variable_path
+        )
+
+        if df.empty:
+            raise ValueError("No data available for plotting")
+
+        # --- filter ---
+        if n_cycles is not None:
+            df = df.tail(n_cycles)
+        elif t1 is not None or t2 is not None:
+            if t1 is not None:
+                df = df[df["time"] >= t1]
+            if t2 is not None:
+                df = df[df["time"] <= t2]
+
+        # --- resolve band column ---
+        std_col = None
+        if band is not None:
+            # Pull the derived string name (e.g., 'stddev') if f2 is a Field instance
+            std_col = getattr(band, "_derived_name", str(band))
+
+        # --- plotting ---
+        plotter = PlotGenerator(os.path.dirname(out_file) or ".")
+
+        plotter.generate_history_plot_pd(
+            df=df,
+            val_col=self._derived_name,   # e.g. "mean"
+            std_col=std_col,              # e.g. "stddev"
+            title=f"{self._variable_path}.{self._derived_name}",
+            y_label="Value",
+            out_path=out_file,
+            use_moving_avg=False          # Disables rolling MA to respect the exact field band
+        )
+
+        return out_file
+
+    def oldplot(self, out_file, t1=None, t2=None, n_cycles=None):
         if self._derived_name is None:
             raise ValueError("Field.plot() only supported for derived fields")
 
