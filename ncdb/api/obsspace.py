@@ -1,6 +1,7 @@
 import logging
 
 from .field import Field
+from .evaluators import BaseVariableEvaluator
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +42,9 @@ class ObsSpace:
         if "/" in name:
             path = structure.check_variable_path(name)
             if path:
-                return Field(self._field, path, self._repo)
+                evaluator = BaseVariableEvaluator(self._field, path, self._repo)
+                return Field(evaluator)
             else:
-                # logger.error(f"{self.name}:{name} not found")
                 raise ValueError(f"Field '{name}' not found")
 
         # --- short name ---
@@ -55,10 +56,8 @@ class ObsSpace:
         if len(paths) > 1:
             raise ValueError(f"Field '{name}' is ambiguous. Matches: {paths}")
 
-        return Field(self._field, paths[0], self._repo)
-
-    # def list_variables(self):
-        # return self._field.obs_space.netcdf_structure.list_variables()
+        evaluator = BaseVariableEvaluator(self._field, paths[0], self._repo)
+        return Field(evaluator)
 
     def list_variables(self, group: str | None = None):
         structure = self._field.obs_space.netcdf_structure
@@ -71,4 +70,3 @@ class ObsSpace:
             group = f"/{group}"
 
         return structure.list_variables(parent_path=group)
-

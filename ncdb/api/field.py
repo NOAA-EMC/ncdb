@@ -1,222 +1,70 @@
+# api/field.py
 import logging
+import operator
+import os
+from .expression import Expression
+from .evaluators import (
+    DerivedAttributeEvaluator, 
+    PointwiseOpEvaluator,
+    MovingAverageEvaluator,
+    MovingStandardDeviationEvaluator
+)
+
 logger = logging.getLogger(__name__)
 
-import os
-from datetime import datetime
-from .value import Value
+class Field(Expression):
+    def __init__(self, evaluator):
+        self._evaluator = evaluator
 
-from ncdb.ds.services.field_data_service import FieldDataService
-from ncdb.plotting.plot_generator import PlotGenerator
-
-# A field is a time-dependent scalar field.
-# it could be a single scalar (derived attribute)
-# or it could be a field over a 2d geographic domain
-# the coordinates for the 2d variable are taken
-# from the associated field (lon, lat)
-
-class Field:
-    def __init__(self, field, variable_path, repo=None, derived_name=None):
-        self._field = field
-        self._variable_path = variable_path
-        self._repo = repo
-        self._derived_name = derived_name
+    @property
+    def name(self) -> str:
+        return self._evaluator.name
 
     def __repr__(self):
-        if self._derived_name:
-            return f"<Field {self._variable_path}.{self._derived_name}>"
-        return f"<Field {self._variable_path}>"
+        return f"<Field {self.name}>"
 
     def at(self, time):
-        # if not self._field.files:
-            # self._repo.load_files(self._field)
-# 
-        # logger.info(f"Available files for field: {self._field.files}")
-# 
-        date = time.date()
-        hour = time.hour
-        ds_file = self._repo.load_file_for_field_and_cycle(
-            self._field,
-            date,
-            hour
-        )
-
-        if ds_file is None:
-            raise ValueError(f"No data for time {time}")
-
-        if ds_file.netcdf_file is None:
-            raise RuntimeError("DatasetFile has no NetCDF data loaded")
-
-        # --- base variable ---
-        if self._derived_name is None:
-            data = ds_file.get_variable(self._variable_path)
-
-            # minimal coordinate resolution (temporary)
-            lat = ds_file.get_variable("/MetaData/latitude")
-            lon = ds_file.get_variable("/MetaData/longitude")
-
-            coords = {}
-            if lat is not None and lon is not None:
-                coords = {
-                    "latitude": lat,
-                    "longitude": lon,
-                }
-
-            return Value(data=data, coords=coords)
-
-        # --- derived variable ---
-        # value = ds_file.get_derived(self._variable_path, self._derived_name)
-
-        # temporarily ugly:
-        nc_file = ds_file.netcdf_file
-        nc_file.from_orm_derived_attributes(self._repo.session)
-        values = nc_file.derived_values.get(self._variable_path)
-        value = values.get(self._derived_name)
-
-        if value is None:
-            raise ValueError(
-                f"Derived attribute '{self._derived_name}' not found for {self._variable_path}"
-            )
-
-        return Value(
-            data=value,
-            coords={},   # scalar → no spatial coords
-            metadata={"derived": self._derived_name}
-        )
+        return self._evaluator.at(time)
 
     def __getitem__(self, time):
         return self.at(time)
 
     def __getattr__(self, name: str):
-        # prevent messing with internals
         if name.startswith("_"):
             raise AttributeError(name)
 
-        if self._field.has_derived(self._variable_path, name):
-            return Field(
-                field=self._field,
-                variable_path=self._variable_path,
-                repo=self._repo,
-                derived_name=name
-            )
-
-        raise AttributeError(f"{name} not found")
+        current_eval = self._evaluator
+        if hasattr(current_eval, "_field") and current_eval._field is not None:
+            if current_eval._field.has_derived(current_eval._variable_path, name):
+                return Field(evaluator=DerivedAttributeEvaluator(target_field=self, derived_name=name))
+                
+        raise AttributeError(f"Attribute '{name}' not found for field node.")
 
     @property
     def cycles(self):
-        if self._repo is None:
-            raise RuntimeError(
-                "Field.cycles() requires repository access"
-            )
-
-        from ncdb.ds.services.field_data_service import (
-            FieldDataService
-        )
-
-        service = FieldDataService(
-            self._repo.session
-        )
-
-        return service.get_cycles(
-            self._field
-        )
+        return self._evaluator.cycles
 
     def list_attributes(self):
-        attrs = self._field.list_derived_attributes(self._variable_path)
+        current_eval = self._evaluator
+        if not hasattr(current_eval, "_field") or current_eval._field is None:
+            return []
+        attrs = current_eval._field.list_derived_attributes(current_eval._variable_path)
         return sorted(attrs)
 
-    def plot(self, out_file, band=None, t1=None, t2=None, n_cycles=None):
-        if self._derived_name is None:
-            raise ValueError("Field.plot() only supported for derived fields")
+    def __add__(self, other):
+        return Field(evaluator=PointwiseOpEvaluator(self, other, operator.add, "+"))
 
-        if self._repo is None:
-            raise RuntimeError("Field.plot() requires repository access")
+    def __sub__(self, other):
+        return Field(evaluator=PointwiseOpEvaluator(self, other, operator.sub, "-"))
 
-        session = self._repo.session
+    def __mul__(self, other):
+        return Field(evaluator=PointwiseOpEvaluator(self, other, operator.mul, "*"))
 
-        service = FieldDataService(session)
+    def __truediv__(self, other):
+        return Field(evaluator=PointwiseOpEvaluator(self, other, operator.truediv, "/"))
 
-        # --- fetch full dataframe ---
-        df = service.get_variable_derived_data(
-            self._field,
-            self._variable_path
-        )
+    def moving_avg(self):
+        return Field(evaluator=MovingAverageEvaluator(self))
 
-        if df.empty:
-            raise ValueError("No data available for plotting")
-
-        # --- filter ---
-        if n_cycles is not None:
-            df = df.tail(n_cycles)
-        elif t1 is not None or t2 is not None:
-            if t1 is not None:
-                df = df[df["time"] >= t1]
-            if t2 is not None:
-                df = df[df["time"] <= t2]
-
-        # --- resolve band column ---
-        std_col = None
-        if band is not None:
-            # Pull the derived string name (e.g., 'stddev') if f2 is a Field instance
-            std_col = getattr(band, "_derived_name", str(band))
-
-        # --- plotting ---
-        plotter = PlotGenerator(os.path.dirname(out_file) or ".")
-
-        plotter.generate_history_plot_pd(
-            df=df,
-            val_col=self._derived_name,   # e.g. "mean"
-            std_col=std_col,              # e.g. "stddev"
-            title=f"{self._variable_path}.{self._derived_name}",
-            y_label="Value",
-            out_path=out_file,
-            use_moving_avg=False          # Disables rolling MA to respect the exact field band
-        )
-
-        return out_file
-
-    def oldplot(self, out_file, t1=None, t2=None, n_cycles=None):
-        if self._derived_name is None:
-            raise ValueError("Field.plot() only supported for derived fields")
-
-        if self._repo is None:
-            raise RuntimeError("Field.plot() requires repository access")
-
-        session = self._repo.session
-
-        from ncdb.ds.services.field_data_service import FieldDataService
-        from ncdb.plotting.plot_generator import PlotGenerator
-
-        service = FieldDataService(session)
-
-        # --- fetch full dataframe ---
-        df = service.get_variable_derived_data(
-            self._field,
-            self._variable_path
-        )
-
-        if df.empty:
-            raise ValueError("No data available for plotting")
-
-        # --- filter ---
-        if n_cycles is not None:
-            df = df.tail(n_cycles)
-
-        elif t1 is not None or t2 is not None:
-            if t1 is not None:
-                df = df[df["time"] >= t1]
-            if t2 is not None:
-                df = df[df["time"] <= t2]
-
-        # --- plotting ---
-        plotter = PlotGenerator(os.path.dirname(out_file) or ".")
-
-        plotter.generate_history_plot_pd(
-            df=df,
-            val_col=self._derived_name,   # e.g. "mean", "max"
-            std_col="stddev",            # optional
-            title=f"{self._variable_path}.{self._derived_name}",
-            y_label="Value",
-            out_path=out_file
-        )
-
-        return out_file
+    def moving_std_dev(self):
+        return Field(evaluator=MovingStandardDeviationEvaluator(self))

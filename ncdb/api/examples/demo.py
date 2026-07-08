@@ -37,7 +37,7 @@ def main():
 
     db.scan(
         data_root=DATA_ROOT,
-        n_cycles=-11,
+        n_cycles=-1,
         scanner=SCANNER
     )
 
@@ -50,7 +50,7 @@ def main():
     print("\n=== Datasets ===")
     print(db.datasets())
 
-    # gdas = db.dataset("gdas")
+    # get all datasets named gdas:
     gdas_datasets = db.datasets("gdas")
     print("\n=== gdas Datasets ===")
     for ds in gdas_datasets:
@@ -100,7 +100,7 @@ def main():
     # lat0  = lat[t]
     temp0 = temp[t]
 
-    print("Data loaded:")
+    # print("Data loaded:")
     # print(f"  lon shape:  {getattr(lon0.data, 'shape', 'unknown')}")
     # print(f"  lat shape:  {getattr(lat0.data, 'shape', 'unknown')}")
     print(f"  temp0 shape: {getattr(temp0.data, 'shape', 'unknown')}")
@@ -128,13 +128,40 @@ def main():
     temp_std_dev = temp.std_dev
     plot_path = temp_mean.plot("jtemp_band.png", band = temp_std_dev)
 
-    # nobs = temp.nobs
-    # plot_path = nobs.plot("jnobs.png")
+    # Extract the first and last available cycles 
+    available_cycles = temp_mean.cycles
+    if not available_cycles:
+        raise ValueError("No available cycles found for this field.")
+
+    t1 = available_cycles[0]   # First available cycle
+    t2 = available_cycles[-1]  # Last available cycle
+
+    moving_avg_mean = temp_mean.moving_avg()
+    moving_avg_mean.plot(
+        out_file="jtemp_smoothed_history.png",
+        band=temp_std_dev,
+        t1=t1,
+        t2=t2
+    )
+
+    nobs = temp.nobs
+    nobs_std_dev = nobs.moving_std_dev()
+    # c = FieldCollection()
+    # c.add(nobs)
+    # c.add(nobs_std_dev)
+    # plot_path = c.plot("jnobs.png")
+    plot_path = nobs.plot("jnobs_std_dev.png", band=nobs_std_dev)
 
     c = FieldCollection()
     c.add(temp.min)
     c.add(temp.max)
+    c.add(temp.mean)
+    c.add(moving_avg_mean)
     c.plot("jmulti.png")
+    print(f"generated plot for {c.fields()}")
+
+    # Force a wider window or alternative bounds to see if the timeline formatting layer is clipping vectors
+    # c.plot("jjmulti.png", t1=datetime(2026, 4, 1)) 
 
 '''
     TODO:
