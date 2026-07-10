@@ -162,7 +162,8 @@ class NetcdfFile:
                         if data is None:
                             logger.debug(f"Skipping {path} (not found in file)")
 
-                        stats = self.registry.compute_for_array(data)
+                        # stats = self.registry.compute_for_array(data)
+                        stats = self.registry.compute_for_node(self, path)
                         if stats:
                             self.derived_values[path] = stats
                             computed += 1

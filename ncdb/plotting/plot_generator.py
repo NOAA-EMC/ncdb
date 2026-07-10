@@ -76,14 +76,12 @@ class PlotGenerator:
                     x_data, plot_df[col].values, label=col, linewidth=2.0, marker='o', markersize=4.0,
                     markeredgecolor='#1e293b', markeredgewidth=0.8, zorder=3
                 )
-
         # 2. Render lines with associated variance bands
         if banded_val_cols:
             for val_col, band_col in banded_val_cols:
                 y_data = plot_df[val_col].values
                 band_size = plot_df[band_col].values
                 
-                # Math stays basic: just calculate visual bounds for rendering
                 y_lower = y_data - band_size
                 y_upper = y_data + band_size
                 
@@ -94,10 +92,23 @@ class PlotGenerator:
                 )
                 line_color = line_ref[0].get_color()
                 
+                # --- FLEXIBLE SUFFIX MATCHING ENGINE ---
+                # Determine what the band actually represents (std_dev, rmse, etc.)
+                if "std_dev" in band_col:
+                    band_label_type = "std_dev"
+                elif "rmse" in band_col:
+                    band_label_type = "rmse"
+                else:
+                    # Fallback to the raw column name or stripped base if unknown
+                    band_label_type = band_col
+                
+                # Construct clean legend text (e.g., "seaSurfaceTemperature.meanIndian std_dev")
+                clean_band_label = f"{val_col} {band_label_type}"
+                
                 # Draw the corresponding shaded band matching the line's color natively
                 ax.fill_between(
                     x_data, y_lower, y_upper, color=line_color, alpha=0.15, 
-                    label=f"{val_col} variance", zorder=2
+                    label=clean_band_label, zorder=2
                 )
 
         # 3. Adaptive X-axis for forecast cycles
