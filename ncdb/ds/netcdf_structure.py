@@ -1,3 +1,6 @@
+# make it compatible with python 3.8
+from __future__ import annotations
+
 import logging
 logger = logging.getLogger(__name__)
 
