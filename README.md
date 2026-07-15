@@ -8,6 +8,8 @@ Customized **scanners** are provided to act as the architectural bridge, transla
 
 ## Installation
 
+### Option 1: Standard Installation (Local/Generic Systems)
+
 1. Create and activate a virtual environment:
 
 ```bash
@@ -21,7 +23,23 @@ source venv/bin/activate
 pip install git+https://github.com/NOAA-EMC/ncdb.git
 ```
 
+### Option 2: WCOSS2 Installation
+
+
+1. Clone the repository to your WCOSS2 workspace:
+
+```bash
+git clone [https://github.com/NOAA-EMC/ncdb.git](https://github.com/NOAA-EMC/ncdb.git)
+```
+
+2. Run the automated installation script to load modules, compile dependencies, and set up your virtual environment:
+
+```bash
+cd ncdb
+./ncdb/scripts/wcoss2_install_ncdb.sh
+```
 
 ## Basic Usage
 
 See the example in api/examples/demo.py
+
