@@ -7,33 +7,33 @@
 set -e
 
 # --- 1. Configuration ---
-MONITOR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-VENV_DIR="${MONITOR_DIR}/venv"
-NCDB_REPO="git+https://github.com/givelberg/ncdb.git"
+INSTALL_DIR="$(pwd)"
+VENV_DIR="${INSTALL_DIR}/venv"
+NCDB_REPO="git+https://github.com/NOAA-EMC/ncdb.git"
 
 # Production GEOS install path found on WCOSS2
 GEOS_PATH="/apps/prod/hpc-stack/intel-19.1.3.304/geos/3.8.1"
 
 echo "=== Starting NCDB Installation Sequence ==="
-echo "Target directory: ${MONITOR_DIR}"
+echo "Target directory: ${INSTALL_DIR}"
 echo "Virtual environment: ${VENV_DIR}"
 
-# --- 2. Load WCOSS2 HPC Modules & Compiler Wrapper ---
+# --- 2. Load WCOSS2 Intel compiler & modules ---
 echo "Loading required system modules..."
-# Force Lmod to use the GNU environment (provides 'CC' compiler wrapper)
 module purge
 module load envvar/1.0
-module load PrgEnv-gnu/8.3.3
-module load gcc/12.1.0
-module load python/3.8.6
-module load geos
-module load proj
 
-# Verify compiler is accessible
-if ! which CC &>/dev/null; then
-    echo "ERROR: Compiler wrapper 'CC' not found. Ensure PrgEnv-gnu is loaded properly." >&2
-    exit 1
-fi
+# 1. Load the compiler first (satisfies dependencies for python/3.12.0)
+module load intel/19.1.3.304
+
+# 2. Load the modern python version and geographical libraries
+module load python/3.12.0
+module load geos/3.8.1
+module load proj/7.1.0
+
+# Explicitly tell Python's build system to use the Intel compiler wrappers
+export CC=cc
+export CXX=CC
 
 # --- 3. Export Compilation Paths for Cartopy ---
 echo "Setting up GEOS paths..."
@@ -65,4 +65,3 @@ echo "Compiling Cartopy and installing NCDB..."
 pip install --force-reinstall "${NCDB_REPO}"
 
 echo "=== Installation Successful! ==="
-echo "You can now run your monitor script."

@@ -32,11 +32,10 @@ pip install git+https://github.com/NOAA-EMC/ncdb.git
 git clone [https://github.com/NOAA-EMC/ncdb.git](https://github.com/NOAA-EMC/ncdb.git)
 ```
 
-2. Run the automated installation script to load modules, compile dependencies, and set up your virtual environment:
+2. Source the installation script to load modules, compile dependencies, and activate the venv virtual environment:
 
 ```bash
-cd ncdb
-./ncdb/scripts/wcoss2_install_ncdb.sh
+source ncdb/ncdb/scripts/wcoss2_install_ncdb.sh
 ```
 
 ## Basic Usage

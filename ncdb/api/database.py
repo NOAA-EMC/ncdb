@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 import logging
+logger = logging.getLogger(__name__)
+
 from typing import List, Optional
 import os
 from datetime import datetime, time
@@ -12,8 +16,6 @@ from ncdb.ds.io.dataset_repository import DatasetRepository
 
 from ncdb.scanners import get_scanner_class
 from .dataset import Dataset
-
-logger = logging.getLogger(__name__)
 
 
 class Database:
