@@ -98,9 +98,10 @@ class Dataset:
     def obsspaces(self) -> list[str]:
         return [f.obs_space for f in self._ds.fields]
 
+    # this looks like bad design:
     def obsspace(self, name: str) -> ObsSpace:
         field = self._ds.find_field_by_name(name)
         if not field:
             raise ValueError(f"ObsSpace '{name}' not found")
 
-        return ObsSpace(field, self._repo)
+        return ObsSpace(field, self._repo, dataset=self)

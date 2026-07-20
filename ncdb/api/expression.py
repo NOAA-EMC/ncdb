@@ -31,11 +31,15 @@ class Expression:
             if not active_cycles:
                 continue
 
+            ds_id = node.obsspace.dataset.id
+            col_name = f"{node.name} [ds_{ds_id}]"
+
             records = []
             for cycle in active_cycles:
                 try:
                     val_obj = node.at(cycle)
-                    records.append({"time": cycle, node.name: float(val_obj)})
+                    # records.append({"time": cycle, node.name: float(val_obj)})
+                    records.append({"time": cycle, col_name: float(val_obj)})
                 except Exception as e:
                     logger.debug(f"Skipping cycle {cycle} for {node.name}: {e}")
                     continue
@@ -84,12 +88,22 @@ class Expression:
         banded_val_cols = []
 
         for node in nodes_to_plot:
-            if node.name in master_df.columns:
+            ds_id = node.obsspace.dataset.id
+            col_name = f"{node.name} [ds_{ds_id}]"
+
+            if col_name in master_df.columns:
                 if band_col_name and band_col_name in master_df.columns:
                     # Map to the (value_column, band_size_column) structure 
-                    banded_val_cols.append((node.name, band_col_name))
+                    banded_val_cols.append((col_name, band_col_name))
                 else:
-                    single_val_cols.append(node.name)
+                    single_val_cols.append(col_name)
+
+            # if node.name in master_df.columns:
+                # if band_col_name and band_col_name in master_df.columns:
+                    # # Map to the (value_column, band_size_column) structure 
+                    # banded_val_cols.append((node.name, band_col_name))
+                # else:
+                    # single_val_cols.append(node.name)
 
         output_dir = os.path.dirname(out_file) or "."
         filename = os.path.basename(out_file)

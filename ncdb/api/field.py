@@ -12,13 +12,19 @@ from .evaluators import (
 
 logger = logging.getLogger(__name__)
 
+
 class Field(Expression):
-    def __init__(self, evaluator):
+    def __init__(self, evaluator, obsspace):
         self._evaluator = evaluator
+        self._obsspace = obsspace
 
     @property
     def name(self) -> str:
         return self._evaluator.name
+
+    @property
+    def obsspace(self):
+        return self._obsspace
 
     def __repr__(self):
         return f"<Field {self.name}>"
@@ -36,7 +42,10 @@ class Field(Expression):
         current_eval = self._evaluator
         if hasattr(current_eval, "_field") and current_eval._field is not None:
             if current_eval._field.has_derived(current_eval._variable_path, name):
-                return Field(evaluator=DerivedAttributeEvaluator(target_field=self, derived_name=name))
+                return Field(
+                    evaluator=DerivedAttributeEvaluator(target_field=self, derived_name=name),
+                    obsspace=self.obsspace
+                )
                 
         raise AttributeError(f"Attribute '{name}' not found for field node.")
 
@@ -52,19 +61,27 @@ class Field(Expression):
         return sorted(attrs)
 
     def __add__(self, other):
-        return Field(evaluator=PointwiseOpEvaluator(self, other, operator.add, "+"))
+        return Field(evaluator=PointwiseOpEvaluator(self, other, operator.add, "+"), obsspace=self.obsspace)
 
     def __sub__(self, other):
-        return Field(evaluator=PointwiseOpEvaluator(self, other, operator.sub, "-"))
+        return Field(evaluator=PointwiseOpEvaluator(self, other, operator.sub, "-"), obsspace=self.obsspace)
 
     def __mul__(self, other):
-        return Field(evaluator=PointwiseOpEvaluator(self, other, operator.mul, "*"))
+        return Field(evaluator=PointwiseOpEvaluator(self, other, operator.mul, "*"), obsspace=self.obsspace)
 
     def __truediv__(self, other):
-        return Field(evaluator=PointwiseOpEvaluator(self, other, operator.truediv, "/"))
+        return Field(evaluator=PointwiseOpEvaluator(self, other, operator.truediv, "/"), obsspace=self.obsspace)
 
     def moving_avg(self):
-        return Field(evaluator=MovingAverageEvaluator(self))
+        return Field(evaluator=MovingAverageEvaluator(self), obsspace=self.obsspace)
 
     def moving_std_dev(self):
-        return Field(evaluator=MovingStandardDeviationEvaluator(self))
+        return Field(evaluator=MovingStandardDeviationEvaluator(self), obsspace=self.obsspace)
+
+    # for debugging
+    def print_table(self):
+        for c in sorted(self.cycles or []):
+            try:
+                print(f"{c}  {float(self.at(c)):.6f}")
+            except Exception:
+                continue

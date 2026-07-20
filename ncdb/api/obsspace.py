@@ -13,9 +13,10 @@ class ObsSpace:
     API wrapper over ds.Field.
     """
 
-    def __init__(self, field, repo):
+    def __init__(self, field, repo, dataset):
         self._field = field
         self._repo = repo
+        self._dataset = dataset
 
         # cache structure
         self._structure = field.obs_space.netcdf_structure
@@ -28,6 +29,10 @@ class ObsSpace:
     @property
     def name(self):
         return self._field.obs_space.name
+
+    @property
+    def dataset(self):
+        return self._dataset
 
     def field(self, name: str) -> Field:
         """
@@ -45,7 +50,7 @@ class ObsSpace:
             path = structure.check_variable_path(name)
             if path:
                 evaluator = BaseVariableEvaluator(self._field, path, self._repo)
-                return Field(evaluator)
+                return Field(evaluator, obsspace=self)
             else:
                 raise ValueError(f"Field '{name}' not found")
 
@@ -59,7 +64,7 @@ class ObsSpace:
             raise ValueError(f"Field '{name}' is ambiguous. Matches: {paths}")
 
         evaluator = BaseVariableEvaluator(self._field, paths[0], self._repo)
-        return Field(evaluator)
+        return Field(evaluator, obsspace=self)
 
     def list_variables(self, group: str | None = None):
         structure = self._field.obs_space.netcdf_structure
