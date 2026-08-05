@@ -4,6 +4,9 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, List
 
+from asset_type import AssetType
+from transformation import Transformation
+
 if TYPE_CHECKING:
     from workflow import Workflow
 
@@ -57,37 +60,44 @@ def register_all_b2i_converters(
         script_path = script_dir / script_filename
 
         # Standardized BUFR input asset type name based on format (e.g. bufr_mbuoyb, bufr_subpfl)
-        bufr_asset_type = f"bufr_{bufr_format}"
-        ioda_asset_type = f"ioda_{stream_id}"
+        bufr_asset_type_name = f"bufr_{bufr_format}"
+        ioda_asset_type_name = f"ioda_{stream_id}"
 
-        # Register Asset Types
+        # Register Asset Types using domain objects
         in_type = workflow.register_asset_type(
-            bufr_asset_type, 
-            description=f"Raw BUFR input in {bufr_format} format"
+            AssetType(
+                name=bufr_asset_type_name,
+                description=f"Raw BUFR input in {bufr_format} format"
+            )
         )
         out_type = workflow.register_asset_type(
-            ioda_asset_type, 
-            description=f"IODA NetCDF output for {stream_id}"
+            AssetType(
+                name=ioda_asset_type_name,
+                description=f"IODA NetCDF output for {stream_id}"
+            )
         )
 
+        # Register Transformation using Transformation domain object
         workflow.register_transformation(
-            name=trans_name,
-            handler="adapter:run_b2i_converter",
-            input_asset_types=[in_type],
-            output_asset_types=[out_type],
-            parameters={
-                "script_path": str(script_path),
-                "modulefiles_dir": str(modulefiles_dir),
-                "platform_module": platform_module,
-                "ocean_basin": ocean_basin_path,
-                "data_format": bufr_format,
-                "data_type": stream_id,
-                "output_asset_type": ioda_asset_type,
-                "output_dir": str(output_dir)
-            }
+            Transformation(
+                name=trans_name,
+                handler="adapter:run_b2i_converter",
+                input_asset_types=[in_type],
+                output_asset_types=[out_type],
+                parameters={
+                    "script_path": str(script_path),
+                    "modulefiles_dir": str(modulefiles_dir),
+                    "platform_module": platform_module,
+                    "ocean_basin": ocean_basin_path,
+                    "data_format": bufr_format,
+                    "data_type": stream_id,
+                    "output_asset_type": ioda_asset_type_name,
+                    "output_dir": str(output_dir)
+                }
+            )
         )
 
-        logger.info(f"Registered transformation '{trans_name}' [{bufr_asset_type} -> {ioda_asset_type}]")
+        logger.info(f"Registered transformation '{trans_name}' [{bufr_asset_type_name} -> {ioda_asset_type_name}]")
         registered_transformations.append(trans_name)
 
     return registered_transformations

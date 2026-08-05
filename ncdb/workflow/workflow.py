@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker, joinedload
 
 from workflow_orm import (
     Base, 
+    AssetSourceORM,
     AssetTypeORM, 
     AssetORM, 
     TransformationORM, 
@@ -25,6 +26,7 @@ from transformation import Transformation
 from job import Job
 from asset import Asset
 from asset_type import AssetType
+from asset_source import AssetSource
 
 logger = logging.getLogger(__name__)
 
@@ -63,19 +65,45 @@ class Workflow:
     def _get_session(self) -> Session:
         return self._session_factory()
 
-    def register_asset_type(self, name: str, description: Optional[str] = None) -> AssetType:
-        """Registers a new AssetType in the database and returns a domain AssetType object."""
+    def register_asset_source(self, source: AssetSource) -> AssetSource:
+        """Registers an AssetSource domain object in the database and returns a persisted AssetSource instance."""
         with self._get_session() as session:
-            existing = session.query(AssetTypeORM).filter_by(name=name).first()
+            existing = session.query(AssetSourceORM).filter_by(name=source.name).first()
             if existing:
-                logger.info(f"AssetType '{name}' already exists (id={existing.id}).")
+                logger.info(f"AssetSource '{source.name}' already exists (id={existing.id}).")
+                return AssetSource.from_orm(existing)
+
+            param_str = json.dumps(source.parameters) if source.parameters else None
+            source_orm = AssetSourceORM(
+                name=source.name,
+                handler=source.handler,
+                parameters=param_str,
+            )
+            session.add(source_orm)
+            session.commit()
+            session.refresh(source_orm)
+            logger.info(f"Registered new AssetSource '{source.name}' (id={source_orm.id}).")
+            return AssetSource.from_orm(source_orm)
+
+    def list_asset_sources(self) -> List[AssetSource]:
+        """Lists all registered AssetSources as domain objects."""
+        with self._get_session() as session:
+            sources_orm = session.query(AssetSourceORM).all()
+            return [AssetSource.from_orm(s) for s in sources_orm]
+
+    def register_asset_type(self, asset_type: AssetType) -> AssetType:
+        """Registers an AssetType domain object and returns the persisted domain object."""
+        with self._get_session() as session:
+            existing = session.query(AssetTypeORM).filter_by(name=asset_type.name).first()
+            if existing:
+                logger.info(f"AssetType '{asset_type.name}' already exists (id={existing.id}).")
                 return AssetType.from_orm(existing)
 
-            asset_type_orm = AssetTypeORM(name=name, description=description)
+            asset_type_orm = AssetTypeORM(name=asset_type.name, description=asset_type.description)
             session.add(asset_type_orm)
             session.commit()
             session.refresh(asset_type_orm)
-            logger.info(f"Registered new AssetType '{name}' (id={asset_type_orm.id}).")
+            logger.info(f"Registered new AssetType '{asset_type.name}' (id={asset_type_orm.id}).")
             return AssetType.from_orm(asset_type_orm)
 
     def list_asset_types(self) -> List[AssetType]:
@@ -83,31 +111,25 @@ class Workflow:
         with self._get_session() as session:
             return [AssetType.from_orm(at) for at in session.query(AssetTypeORM).all()]
 
-    def register_asset(
-        self, 
-        uri: str, 
-        asset_type: AssetType, 
-        state: str = "AVAILABLE", 
-        fingerprint: Optional[str] = None
-    ) -> Asset:
-        """Registers a new physical Asset linked to an AssetType domain object."""
+    def register_asset(self, asset: Asset) -> Asset:
+        """Registers a physical Asset domain object linked to an AssetType and returns the persisted object."""
         with self._get_session() as session:
-            existing = session.query(AssetORM).options(joinedload(AssetORM.asset_type)).filter_by(uri=uri).first()
+            existing = session.query(AssetORM).options(joinedload(AssetORM.asset_type)).filter_by(uri=asset.uri).first()
             if existing:
-                logger.info(f"Asset '{uri}' already registered (id={existing.id}).")
+                logger.info(f"Asset '{asset.uri}' already registered (id={existing.id}).")
                 return Asset.from_orm(existing)
 
             asset_orm = AssetORM(
-                asset_type_id=asset_type.id,
-                uri=uri,
-                state=state,
-                fingerprint=fingerprint,
+                asset_type_id=asset.asset_type.id,
+                uri=asset.uri,
+                state=asset.state,
+                fingerprint=asset.fingerprint,
             )
             session.add(asset_orm)
             session.commit()
             
             reloaded = session.query(AssetORM).options(joinedload(AssetORM.asset_type)).get(asset_orm.id)
-            logger.info(f"Registered new Asset '{uri}' (id={reloaded.id}).")
+            logger.info(f"Registered new Asset '{asset.uri}' (id={reloaded.id}).")
             return Asset.from_orm(reloaded)
 
     def list_assets(
@@ -127,42 +149,45 @@ class Workflow:
 
             return [Asset.from_orm(a) for a in query.all()]
 
-    def register_transformation(
-        self,
-        name: str,
-        handler: str,
-        input_asset_types: List[AssetType],
-        output_asset_types: List[AssetType],
-        parameters: Optional[Dict[str, Any]] = None,
-    ) -> Transformation:
-        """Register a transformation blueprint linking input AssetTypes to output AssetTypes."""
+    def list_transformations(self) -> List[Transformation]:
+        """List all registered transformations as domain objects."""
         with self._get_session() as session:
-            # Check if transformation already exists
+            transformations_orm = (
+                session.query(TransformationORM)
+                .options(
+                    joinedload(TransformationORM.inputs).joinedload(TransformationInputORM.asset_type),
+                    joinedload(TransformationORM.outputs).joinedload(TransformationOutputORM.asset_type),
+                )
+                .all()
+            )
+            return [Transformation.from_orm(t) for t in transformations_orm]
+
+    def register_transformation(self, transformation: Transformation) -> Transformation:
+        """Registers a Transformation domain object blueprint and returns the persisted object."""
+        with self._get_session() as session:
             existing = (
                 session.query(TransformationORM)
                 .options(
                     joinedload(TransformationORM.inputs).joinedload(TransformationInputORM.asset_type),
                     joinedload(TransformationORM.outputs).joinedload(TransformationOutputORM.asset_type),
                 )
-                .filter_by(name=name)
+                .filter_by(name=transformation.name)
                 .first()
             )
             if existing:
-                logger.info(f"Transformation '{name}' already exists (id={existing.id}).")
+                logger.info(f"Transformation '{transformation.name}' already exists (id={existing.id}).")
                 return Transformation.from_orm(existing)
 
-            # 1. Create main Transformation record
-            param_str = json.dumps(parameters) if parameters else None
+            param_str = json.dumps(transformation.parameters) if transformation.parameters else None
             trans_orm = TransformationORM(
-                name=name,
-                handler=handler,
+                name=transformation.name,
+                handler=transformation.handler,
                 parameters=param_str,
             )
             session.add(trans_orm)
             session.flush()
 
-            # 2. Map input asset types directly by ID
-            for at in input_asset_types:
+            for at in transformation.input_asset_types:
                 session.add(
                     TransformationInputORM(
                         transformation_id=trans_orm.id,
@@ -170,8 +195,7 @@ class Workflow:
                     )
                 )
 
-            # 3. Map output asset types directly by ID
-            for at in output_asset_types:
+            for at in transformation.output_asset_types:
                 session.add(
                     TransformationOutputORM(
                         transformation_id=trans_orm.id,
@@ -190,22 +214,17 @@ class Workflow:
                 .get(trans_orm.id)
             )
 
-            logger.info(f"Registered new Transformation '{name}' (id={reloaded.id}).")
+            logger.info(f"Registered new Transformation '{transformation.name}' (id={reloaded.id}).")
             return Transformation.from_orm(reloaded)
 
-    def list_transformations(self) -> List[Transformation]:
-        """List all registered transformations as domain objects."""
-        with self._get_session() as session:
-            transformations_orm = (
-                session.query(TransformationORM)
-                .options(
-                    joinedload(TransformationORM.inputs).joinedload(TransformationInputORM.asset_type),
-                    joinedload(TransformationORM.outputs).joinedload(TransformationOutputORM.asset_type),
-                )
-                .all()
-            )
-            return [Transformation.from_orm(t) for t in transformations_orm]
-
+    # this only needs an id
+    # we may want to revert to
+    # def create_job(
+        # self,
+        # transformation_id: int,
+        # input_asset_ids: List[int],
+    # ) -> Job:
+    # create_job is a persistence operation
     def create_job(self, transformation: Transformation, input_assets: List[Asset]) -> Job:
         """Creates a PENDING job given a Transformation domain object and input Asset domain objects."""
         with self._get_session() as session:

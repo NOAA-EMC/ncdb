@@ -19,6 +19,15 @@ class Base(DeclarativeBase):
 # Asset Catalog
 # ----------------------------------------------------------------------
 
+class AssetSourceORM(Base):
+    __tablename__ = "asset_source"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)
+    handler = Column(String, nullable=False)
+    parameters = Column(Text)
+
+
 class AssetTypeORM(Base):
     __tablename__ = "asset_type"
 

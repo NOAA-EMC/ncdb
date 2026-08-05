@@ -7,6 +7,7 @@ from workflow import Workflow
 from worker import Worker
 from planner import Planner
 from sensor import Sensor
+from asset_source import AssetSource
 from workflow_definitions import register_all_b2i_converters
 
 logging.basicConfig(
@@ -26,11 +27,11 @@ BUFR_DATA_DIR = "/scratch3/NCEPDEV/da/common/ci/bufr"
 
 
 # --- Process 1: Sensor Process ---
-def run_sensor_process(db_path: str, bufr_dir: str):
+def run_sensor_process(db_path: str):
     """Directory monitoring daemon process."""
     logger.info("[Sensor Process] Started.")
     wf = Workflow(db_path)
-    sensor = Sensor(watch_dir=bufr_dir, workflow=wf)
+    sensor = Sensor(workflow=wf)
     sensor.run_forever(interval=3.0)
 
 
@@ -57,6 +58,29 @@ def main():
     workflow = Workflow(str(DB_PATH))
     logger.info("Initializing Workflow DB and Converter Definitions...")
 
+    # workflow.register_asset_source(
+        # AssetSource(
+            # name="bufr_directory_source",
+            # handler="sensor:Sensor",
+            # parameters={
+                # "watch_dir": BUFR_DATA_DIR,
+                # "glob_pattern": "*.bufr_d"
+            # }
+        # )
+    # )
+
+    # Register default AssetSource for BUFR files
+    workflow.register_asset_source(
+        AssetSource(
+            name="bufr_directory_source",
+            handler="detectors.bufr:BufrFilesystemDetector",
+            parameters={
+                "watch_dir": BUFR_DATA_DIR,
+                "glob_pattern": "*.bufr_d"
+            }
+        )
+    )
+
     # Register all 14 Converters and Asset Types in database
     register_all_b2i_converters(
         workflow=workflow,
@@ -67,7 +91,7 @@ def main():
 
     p_sensor = multiprocessing.Process(
         target=run_sensor_process, 
-        args=(str(DB_PATH), BUFR_DATA_DIR), 
+        args=(str(DB_PATH), ), 
         name="Sensor"
     )
     p_planner = multiprocessing.Process(
