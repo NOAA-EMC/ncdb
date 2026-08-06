@@ -10,7 +10,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 # from sqlalchemy.dialects.postgresql import JSONB
 
-from .db_base import Base
+from .base import Base
 
 
 class NetcdfVariableDimensionORM(Base):

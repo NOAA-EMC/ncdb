@@ -3,8 +3,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-# Base class for all ORM models
-from .db_base import Base  # SQLAlchemy declarative base
+from .base import Base
 from .file_orm import FileORM
 
 

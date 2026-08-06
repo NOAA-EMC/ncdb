@@ -5,7 +5,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .file_orm import FileORM
+from ncdb.orm import FileORM
 
 
 class File:

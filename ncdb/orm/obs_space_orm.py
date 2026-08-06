@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey 
 from sqlalchemy.orm import relationship 
-from .db_base import Base
+from .base import Base
 
 
 class ObsSpaceORM(Base):

@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 
 from typing import List, Optional
 
-from .dataset_orm import DatasetORM
+from ncdb.orm import DatasetORM
 from .file import File
 from .obs_space import ObsSpace
 from .cycle import Cycle

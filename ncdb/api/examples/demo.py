@@ -15,10 +15,14 @@ from ncdb.api import Database, FieldCollection
 BASE_DIR = Path(__file__).parent
 DB_DIR = BASE_DIR
 
+JOHNS_DATA_DIR="/scratch4/NCEPDEV/global/John.Steffen/hpss_arch"
+EXPERIMENTS = [
+    "cp4.04-parallel-3dvar",
+    "cp4.04-parallel-hybrid",
+    "retrov17_01_realtime"
+]
 
 SCANNER = "marine_da"
-DATA_ROOT = "/scratch4/NCEPDEV/global/John.Steffen/hpss_arch/cp4.03-parallel-3dvar"
-DATA_ROOT4 = "/scratch4/NCEPDEV/global/John.Steffen/hpss_arch/cp4.04-parallel-3dvar"
 DB_PATH = f"{DB_DIR}/marine-da.db"
 
 
@@ -32,37 +36,29 @@ DB_PATH = f"{DB_DIR}/emcda.db"
 def main():
     db = Database(DB_PATH)
 
-    print("\n=== Datasets ===")
-    print(db.datasets())
-
-    db.scan(
-        data_root=DATA_ROOT,
-        n_cycles=-1,
-        scanner=SCANNER
-    )
-
-    # db.scan(
-        # data_root=DATA_ROOT4,
-        # n_cycles=-2,
-        # scanner=SCANNER
-    # )
+    for experiment in EXPERIMENTS:
+        DATA_ROOT = JOHNS_DATA_DIR + "/" + experiment
+        db.scan(
+            data_root=DATA_ROOT,
+            n_cycles=-1,
+            scanner=SCANNER
+        )
 
     print("\n=== Datasets ===")
-    print(db.datasets())
+    for ds in db.datasets():
+        print(f"- {ds}")
 
     # get all datasets named gdas:
     gdas_datasets = db.datasets("gdas")
     print("\n=== gdas Datasets ===")
     for ds in gdas_datasets:
-        print(ds)
+        print(f"Dataset object: {ds} ID: {ds.id}")
+        cycles = ds.cycles
+        print(f"Available cycles for {ds}:")
+        for c in cycles:
+            print(c)
+
     gdas = gdas_datasets[0]
-
-    cycles = gdas.cycles
-    print(f"Available cycles for {gdas}:")
-    for c in cycles:
-        print(c)
-
-    # print(f"\n=== loaded dataset {gdas} ===\n")
 
     obsspace_names = [o.name for o in gdas.obsspaces()]
     print(f"{len(obsspace_names)} obs spaces in {gdas}:")
@@ -93,7 +89,7 @@ def main():
     # t = datetime(2026, 4, 7, 6)
     # t = datetime(2026, 5, 1, 6)
     # t = datetime(2026, 5, 4, 12)
-    t = cycles[-1]
+    t = temp.cycles[-1]
     print(f"Requesting data at time: {t}\n")
 
     # lon0  = lon[t]
@@ -157,6 +153,17 @@ def main():
     c.add(temp.max)
     c.add(temp.mean)
     c.add(moving_avg_mean)
+    c.plot("jjjmulti.png")
+
+    c = FieldCollection()
+    for ds in gdas_datasets:
+        sst = ds.obsspace("sst_viirs_n20_l3u")
+        temp = sst.field("/ombg/seaSurfaceTemperature")
+        c.add(temp.mean)
+    # c.print_table()
+    # for f in c._fields:
+        # print("---->")
+        # f.print_table()
     c.plot("jmulti.png")
     print(f"generated plot for {c.fields()}")
 
@@ -195,6 +202,17 @@ def main():
     # algebra:
     dt = temp0 - temp00
     max_dt = dt.max
+
+    # restriction to ocean basin:
+    sst = gdas.obsspace("sst_viirs_n20_l3u")
+    temp = sst.field("/ObsValue/seaSurfaceTemperature")
+    ocean_basin = sst.field("/Metadata/ocean_basin")
+    temp_atlantic = temp.where(ocean_basin=2)
+    temp_atlantic_mean = temp_atlantic.mean
+    temp_atlantic_rmse = temp_atlantic.rmse
+    temp_atlantic_mean.plot("file.png", band=temp_atlantic_rmse) 
+
+
 '''
 
 

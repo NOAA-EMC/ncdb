@@ -4,12 +4,9 @@ import numpy as np
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 
-# from .file_orm import FileORM
-from .netcdf_structure_orm import (
+from ncdb.orm import (
     NetcdfStructureAttributeORM,
-    NetcdfNodeORM
-)
-from .netcdf_file_orm import (
+    NetcdfNodeORM,
     NetcdfFileAttributeORM,
     NetcdfFileDerivedAttributeORM,
 )

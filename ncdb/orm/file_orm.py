@@ -2,7 +2,7 @@ from sqlalchemy import (
     Column, Integer, String, BigInteger, DateTime, UniqueConstraint
 )
 
-from .db_base import Base
+from .base import Base
 
 
 class FileORM(Base):

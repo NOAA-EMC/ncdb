@@ -3,7 +3,7 @@ logger = logging.getLogger(__name__)
 
 from typing import List, Optional
 
-from .dataset_orm import FieldORM
+from ncdb.orm import FieldORM
 from .dataset_file import DatasetFile
 
 

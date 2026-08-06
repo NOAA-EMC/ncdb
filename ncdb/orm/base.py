@@ -1,4 +1,3 @@
-# db_base.py
 """
 Shared SQLAlchemy declarative base.
 

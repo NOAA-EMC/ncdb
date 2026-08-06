@@ -4,7 +4,7 @@ logger = logging.getLogger(__name__)
 from datetime import date, datetime
 from typing import Optional, List
 
-from .dataset_orm import CycleORM
+from ncdb.orm import CycleORM
 from .dataset_file import DatasetFile
 
 

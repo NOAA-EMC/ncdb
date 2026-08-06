@@ -4,7 +4,7 @@ import netCDF4
 import numpy as np
 
 from sqlalchemy.orm import Session
-from .netcdf_structure_orm import NetcdfNodeORM
+from ncdb.orm import NetcdfNodeORM
 
 # Prevents circular imports for type hinting
 if TYPE_CHECKING:
@@ -81,7 +81,7 @@ class NetcdfNode:
         Also persists attribute definitions for this node.
         """
 
-        from .netcdf_structure_orm import NetcdfStructureAttributeORM
+        from ncdb.orm import NetcdfStructureAttributeORM
 
         if not self.structure or self.structure.id is None:
             logger.error(

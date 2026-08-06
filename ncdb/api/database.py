@@ -10,7 +10,7 @@ from datetime import datetime, time
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from ncdb.ds.db_base import Base
+from ncdb.orm import Base
 
 from ncdb.ds.io.dataset_repository import DatasetRepository
 

@@ -5,7 +5,7 @@ from typing import Optional
 
 from sqlalchemy import select, and_
 
-from ncdb.ds.dataset_orm import (
+from ncdb.orm import (
     FieldORM, DatasetORM, CycleORM, DatasetFileORM
 )
 from ncdb.ds.dataset import Dataset

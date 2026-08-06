@@ -10,7 +10,7 @@ from typing import List, Dict, Optional, Any
 
 from sqlalchemy.orm import Session
 
-from .netcdf_structure_orm import NetcdfStructureORM, NetcdfVariableDimensionORM
+from ncdb.orm import NetcdfStructureORM, NetcdfVariableDimensionORM
 from .netcdf_scanner import NetcdfScanner
 from .netcdf_node import NetcdfNode
 

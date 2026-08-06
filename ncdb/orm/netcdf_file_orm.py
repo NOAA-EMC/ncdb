@@ -8,7 +8,7 @@ from sqlalchemy import (
     Index,
 )
 from sqlalchemy.types import JSON
-from .db_base import Base
+from .base import Base
 
 
 class NetcdfFileDerivedAttributeORM(Base):

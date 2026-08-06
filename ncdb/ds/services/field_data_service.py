@@ -5,16 +5,14 @@ import pandas as pd
 from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 
-from ncdb.ds.dataset_orm import (
+from ncdb.orm import (
     FieldORM,
     CycleORM,
-    DatasetFileORM
+    DatasetFileORM,
+    NetcdfNodeORM,
+    NetcdfFileDerivedAttributeORM,
 )
 
-from ncdb.ds.netcdf_structure_orm import  NetcdfNodeORM
-from ncdb.ds.netcdf_file_orm import NetcdfFileDerivedAttributeORM
-
-# from ncdb.ds.dataset_file import DatasetFile
 from ncdb.ds.field import Field
 
 
