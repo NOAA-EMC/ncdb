@@ -10,12 +10,6 @@ from datetime import date
 from ncdb.ds.file import File
 from ncdb.ds.dataset import Dataset
 
-# the following should be moved out and refactored
-# from sqlalchemy import create_engine
-# from sqlalchemy.orm import Session
-# from ncdb.ds.db_base import Base
-# from ncdb.ds.io.dataset_repository import DatasetRepository
-
 
 class ScanCycle:
     def __init__(self, dataset, cycle_date, cycle_hour, scan_results):

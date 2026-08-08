@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from ncdb.orm import Base
 
-from ncdb.ds.io.dataset_repository import DatasetRepository
+from ncdb.repository import DatasetRepository
 
 from ncdb.scanners import get_scanner_class
 from .dataset import Dataset
