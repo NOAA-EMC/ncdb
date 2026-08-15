@@ -1,15 +1,4 @@
 import logging
-import multiprocessing
-import time
-from pathlib import Path
-
-from workflow import Workflow
-from worker import Worker
-from planner import Planner
-from sensor import Sensor
-from asset_source import AssetSource
-from workflow_definitions import register_all_b2i_converters
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
@@ -20,20 +9,70 @@ logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logger = logging.getLogger("demo_b2i")
 
+import multiprocessing
+import time
+from pathlib import Path
+
+from workflow import (
+    Workflow, 
+    Worker, 
+    Planner, 
+    AssetSource
+)
+from sensor import Sensor
+# from dummy_catalog import Catalog
+from catalog import Catalog
+from obsforge.b2i import register_all_b2i_converters
+from datastore import DataStore
+from datastore.devices.filesystem import FileSystemDevice
+
+
 BASE_DIR = Path(__file__).parent.resolve()
-DB_PATH = BASE_DIR / "obsforge-workflow.db"
+
+WORKFLOW_DB_PATH = BASE_DIR / "obsforge-workflow.db"
+CATALOG_DB_PATH = BASE_DIR / "obsforge-catalog.db"
+DATASTORE_DB_PATH = BASE_DIR / "obsforge-datastore.db"
+
 OBSFORGE_DIR = "/scratch3/NCEPDEV/da/Edward.Givelberg/obsForge"
 BUFR_DATA_DIR = "/scratch3/NCEPDEV/da/common/ci/bufr"
 
 
-# --- Process 1: Sensor Process ---
-def run_sensor_process(db_path: str):
-    """Directory monitoring daemon process."""
-    logger.info("[Sensor Process] Started.")
-    wf = Workflow(db_path)
-    sensor = Sensor(workflow=wf)
-    sensor.run_forever(interval=3.0)
+'''
+def register_output_in_datastore(
+    datastore,
+    asset,
+    device_name,
+):
+    with open(asset.uri, "rb") as f:
+        data = f.read()
 
+    product = DataProduct(
+        asset_id=asset.id,
+    )
+
+    datastore.register(
+        product=product,
+        device=device_name,
+        address=Path(asset.uri).name,
+        data=data,
+    )
+'''
+
+def run_sensor_process(
+    workflow_db_path: str,
+    catalog_db_path: str,
+):
+    logger.info("[Sensor Process] Started.")
+
+    wf = Workflow(workflow_db_path)
+    catalog = Catalog(catalog_db_path)
+
+    sensor = Sensor(
+        workflow=wf,
+        catalog=catalog,
+    )
+
+    sensor.run_forever(interval=3.0)
 
 # --- Process 2: Planner Daemon Process ---
 def run_planner_process(db_path: str):
@@ -52,28 +91,38 @@ def run_worker_process(db_path: str):
     worker = Worker(workflow=wf, poll_interval=2.0)
     worker.run_forever()
 
+def init_catalog():
+    catalog = Catalog(str(CATALOG_DB_PATH))
 
-# --- Main Orchestrator ---
-def main():
-    workflow = Workflow(str(DB_PATH))
+    temperature = catalog.register_variable(
+        "temperature",
+        "Sea water temperature",
+    )
+
+    salinity = catalog.register_variable(
+        "salinity",
+        "Sea water salinity",
+    )
+
+    profile = catalog.register_obs_space(
+        "ocean_profile",
+        "Ocean profile observations",
+    )
+
+    catalog.associate(profile, temperature)
+    catalog.associate(profile, salinity)
+
+    return catalog
+
+def init_workflow():
+    workflow = Workflow(str(WORKFLOW_DB_PATH))
     logger.info("Initializing Workflow DB and Converter Definitions...")
-
-    # workflow.register_asset_source(
-        # AssetSource(
-            # name="bufr_directory_source",
-            # handler="sensor:Sensor",
-            # parameters={
-                # "watch_dir": BUFR_DATA_DIR,
-                # "glob_pattern": "*.bufr_d"
-            # }
-        # )
-    # )
 
     # Register default AssetSource for BUFR files
     workflow.register_asset_source(
         AssetSource(
             name="bufr_directory_source",
-            handler="detectors.bufr:BufrFilesystemDetector",
+            handler="obsforge.detectors.bufr:BufrFilesystemDetector",
             parameters={
                 "watch_dir": BUFR_DATA_DIR,
                 "glob_pattern": "*.bufr_d"
@@ -89,19 +138,45 @@ def main():
         output_base_dir=BASE_DIR / "ioda_data"
     )
 
-    p_sensor = multiprocessing.Process(
-        target=run_sensor_process, 
-        args=(str(DB_PATH), ), 
-        name="Sensor"
+    return workflow
+
+def init_datastore():
+    datastore = DataStore(str(DATASTORE_DB_PATH))
+
+    device = FileSystemDevice(
+        BASE_DIR / "datastore_files"
     )
+
+    datastore.register_device(
+        "filesystem",
+        device,
+    )
+
+    return datastore
+
+
+def main():
+    catalog = init_catalog()
+    workflow = init_workflow()
+    datastore = init_datastore()
+
+    p_sensor = multiprocessing.Process(
+        target=run_sensor_process,
+        args=(
+            str(WORKFLOW_DB_PATH),
+            str(CATALOG_DB_PATH),
+        ),
+        name="Sensor",
+    )
+
     p_planner = multiprocessing.Process(
         target=run_planner_process, 
-        args=(str(DB_PATH),), 
+        args=(str(WORKFLOW_DB_PATH),), 
         name="Planner"
     )
     p_worker = multiprocessing.Process(
         target=run_worker_process, 
-        args=(str(DB_PATH),), 
+        args=(str(WORKFLOW_DB_PATH),), 
         name="Worker"
     )
 

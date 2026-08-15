@@ -5,8 +5,8 @@ import time
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    from workflow import Workflow
-    from job import Job
+    from .workflow import Workflow
+    from .job import Job
 
 logger = logging.getLogger(__name__)
 

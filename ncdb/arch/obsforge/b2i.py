@@ -4,13 +4,13 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, List
 
-from asset_type import AssetType
-from transformation import Transformation
+from workflow import AssetType, Transformation
 
 if TYPE_CHECKING:
     from workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
 
 # Clean, static registry: (category, stream_id, bufr_format)
 # NO hardcoded cycle dates!
@@ -81,7 +81,7 @@ def register_all_b2i_converters(
         workflow.register_transformation(
             Transformation(
                 name=trans_name,
-                handler="adapter:run_b2i_converter",
+                handler="obsforge.adapter:run_b2i_converter",
                 input_asset_types=[in_type],
                 output_asset_types=[out_type],
                 parameters={

@@ -10,14 +10,12 @@ from .dataset_file_orm import DatasetFileORM
 from .obs_space_orm import ObsSpaceORM
 
 # New logical observation model
-from .observation_orm import (
+from .variable_orm import (
     VariableORM,
-    DataProductORM,
-    DataProductVariableORM,
+    ObsSpaceVariableORM,
+    # DataProductORM,
+    # DataProductVariableORM,
 )
-
-# Physical files
-from .file_orm import FileORM
 
 # NetCDF physical representation
 from .netcdf_structure_orm import (
@@ -32,6 +30,10 @@ from .netcdf_file_orm import (
     NetcdfFileDerivedAttributeORM,
 )
 
+# Physical storage
+from .file_orm import FileORM
+from .storage_orm import StorageORM
+
 
 __all__ = [
     "Base",
@@ -45,11 +47,9 @@ __all__ = [
     # Logical observation model
     "ObsSpaceORM",
     "VariableORM",
-    "DataProductORM",
-    "DataProductVariableORM",
-
-    # Physical files
-    "FileORM",
+    "ObsSpaceVariableORM",
+    # "DataProductORM",
+    # "DataProductVariableORM",
 
     # NetCDF representation
     "NetcdfNodeORM",
@@ -58,4 +58,8 @@ __all__ = [
     "NetcdfVariableDimensionORM",
     "NetcdfFileAttributeORM",
     "NetcdfFileDerivedAttributeORM",
+
+    # Physical storage
+    "FileORM",
+    "StorageORM",
 ]

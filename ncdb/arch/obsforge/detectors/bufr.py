@@ -5,10 +5,12 @@ import time
 from pathlib import Path
 from typing import Dict, Iterable, Optional, Tuple
 
-from asset import Asset
-from asset_context import AssetContext
-from asset_source import AssetSource
-from asset_type import AssetType
+from workflow import (
+    Asset,
+    AssetContext,
+    AssetSource,
+    AssetType,
+)
 
 logger = logging.getLogger(__name__)
 

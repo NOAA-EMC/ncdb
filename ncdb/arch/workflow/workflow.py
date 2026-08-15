@@ -9,7 +9,7 @@ from datetime import datetime
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker, joinedload
 
-from workflow_orm import (
+from .workflow_orm import (
     Base, 
     AssetSourceORM,
     AssetTypeORM, 
@@ -22,11 +22,11 @@ from workflow_orm import (
     JobOutputAssetORM
 )
 
-from transformation import Transformation
-from job import Job
-from asset import Asset
-from asset_type import AssetType
-from asset_source import AssetSource
+from .transformation import Transformation
+from .job import Job
+from .asset import Asset
+from .asset_type import AssetType
+from .asset_source import AssetSource
 
 logger = logging.getLogger(__name__)
 

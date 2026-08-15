@@ -35,6 +35,12 @@ class ObsSpaceORM(Base):
         back_populates="obs_spaces",
     )
 
+    obs_space_variables = relationship(
+        "ObsSpaceVariableORM",
+        back_populates="obs_space",
+        cascade="all, delete-orphan",
+    )
+
     def __repr__(self) -> str:
         return (
             f"<ObsSpaceORM("

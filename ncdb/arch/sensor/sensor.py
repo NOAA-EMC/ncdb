@@ -5,13 +5,9 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from asset import Asset
-from asset_context import AssetContext
-
+from workflow import AssetContext
 if TYPE_CHECKING:
-    from workflow import Workflow
-    from catalog import Catalog
-    from asset_source import AssetSource
+    from workflow import Workflow, AssetSource
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +26,16 @@ class Sensor:
     registering physical assets with Workflow and scientific context with Catalog.
     """
 
-    def __init__(self, workflow: Workflow, catalog: Optional[Catalog] = None):
+    # def __init__(self, workflow: Workflow, catalog: Optional[Catalog] = None):
+    def __init__(self, workflow: Workflow, catalog):
         self.workflow = workflow
         
-        if catalog is None:
-            from catalog import Catalog as MemoryCatalog
-            self.catalog = MemoryCatalog()
-        else:
-            self.catalog = catalog
+        # if catalog is None:
+            # from catalog import Catalog as MemoryCatalog
+            # self.catalog = MemoryCatalog()
+        # else:
+            # self.catalog = catalog
+        self.catalog = catalog
 
         self._detector_cache: Dict[str, Any] = {}
 

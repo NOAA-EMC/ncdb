@@ -11,8 +11,7 @@ from typing import Any, Dict, List, Tuple, TYPE_CHECKING
 import yaml
 
 if TYPE_CHECKING:
-    from job import Job
-    from asset_type import AssetType
+    from workflow import Job, AssetType
 
 logger = logging.getLogger(__name__)
 

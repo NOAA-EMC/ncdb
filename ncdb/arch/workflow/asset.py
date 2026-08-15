@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from asset_type import AssetType
+from .asset_type import AssetType
 
 logger = logging.getLogger(__name__)
 

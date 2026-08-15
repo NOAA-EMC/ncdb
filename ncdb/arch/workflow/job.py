@@ -5,8 +5,8 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from asset import Asset
-from transformation import Transformation
+from .asset import Asset
+from .transformation import Transformation
 
 logger = logging.getLogger(__name__)
 

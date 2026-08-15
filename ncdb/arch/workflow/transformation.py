@@ -2,7 +2,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
-from asset_type import AssetType
+from .asset_type import AssetType
 
 @dataclass
 class Transformation:

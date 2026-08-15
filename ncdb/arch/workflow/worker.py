@@ -5,10 +5,10 @@ import logging
 import time
 from typing import Callable, Optional, TYPE_CHECKING
 
-from job import Job
+from .job import Job
 
 if TYPE_CHECKING:
-    from workflow import Workflow
+    from .workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
