@@ -3,7 +3,6 @@ from .worker import Worker
 from .planner import Planner
 from .asset import Asset
 from .asset_type import AssetType
-from .asset_source import AssetSource
 from .transformation import Transformation
 from .job import Job
 
@@ -15,7 +14,7 @@ __all__ = [
     "Planner",
     "Asset",
     "AssetType",
-    "AssetSource",
+    # "AssetSource",
     "Transformation",
     "Job",
 

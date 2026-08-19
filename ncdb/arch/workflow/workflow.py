@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker, joinedload
 
 from .workflow_orm import (
     Base, 
-    AssetSourceORM,
+    # AssetSourceORM,
     AssetTypeORM, 
     AssetORM, 
     TransformationORM, 
@@ -26,7 +26,6 @@ from .transformation import Transformation
 from .job import Job
 from .asset import Asset
 from .asset_type import AssetType
-from .asset_source import AssetSource
 
 logger = logging.getLogger(__name__)
 
@@ -64,32 +63,6 @@ class Workflow:
 
     def _get_session(self) -> Session:
         return self._session_factory()
-
-    def register_asset_source(self, source: AssetSource) -> AssetSource:
-        """Registers an AssetSource domain object in the database and returns a persisted AssetSource instance."""
-        with self._get_session() as session:
-            existing = session.query(AssetSourceORM).filter_by(name=source.name).first()
-            if existing:
-                logger.info(f"AssetSource '{source.name}' already exists (id={existing.id}).")
-                return AssetSource.from_orm(existing)
-
-            param_str = json.dumps(source.parameters) if source.parameters else None
-            source_orm = AssetSourceORM(
-                name=source.name,
-                handler=source.handler,
-                parameters=param_str,
-            )
-            session.add(source_orm)
-            session.commit()
-            session.refresh(source_orm)
-            logger.info(f"Registered new AssetSource '{source.name}' (id={source_orm.id}).")
-            return AssetSource.from_orm(source_orm)
-
-    def list_asset_sources(self) -> List[AssetSource]:
-        """Lists all registered AssetSources as domain objects."""
-        with self._get_session() as session:
-            sources_orm = session.query(AssetSourceORM).all()
-            return [AssetSource.from_orm(s) for s in sources_orm]
 
     def register_asset_type(self, asset_type: AssetType) -> AssetType:
         """Registers an AssetType domain object and returns the persisted domain object."""

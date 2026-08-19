@@ -17,9 +17,10 @@ from workflow import (
     Workflow, 
     Worker, 
     Planner, 
+    AssetSource
 )
 # from sensor import Sensor
-from sensor import Sensor, AssetSource
+from sensor import DataProcessor
 # from dummy_catalog import Catalog
 from catalog import Catalog
 from obsforge.b2i import register_all_b2i_converters
@@ -27,56 +28,48 @@ from datastore import DataStore
 from datastore.devices.filesystem import FileSystemDevice
 
 
-
 BASE_DIR = Path(__file__).parent.resolve()
 
 WORKFLOW_DB_PATH = BASE_DIR / "obsforge-workflow.db"
 CATALOG_DB_PATH = BASE_DIR / "obsforge-catalog.db"
 DATASTORE_DB_PATH = BASE_DIR / "obsforge-datastore.db"
-SENSOR_DB_PATH = BASE_DIR / "obsforge-sensor.db"
 
 OBSFORGE_DIR = "/scratch3/NCEPDEV/da/Edward.Givelberg/obsForge"
 BUFR_DATA_DIR = "/scratch3/NCEPDEV/da/common/ci/bufr"
 
 
+# def run_sensor_process(
+    # workflow_db_path: str,
+    # catalog_db_path: str,
+# ):
+    # logger.info("[Sensor Process] Started.")
+# 
+    # wf = Workflow(workflow_db_path)
+    # catalog = Catalog(catalog_db_path)
+# 
+    # sensor = Sensor(
+        # workflow=wf,
+        # catalog=catalog,
+    # )
+# 
+    # sensor.run_forever(interval=3.0)
 
 
-def run_sensor_process(workflow_db_path: str, catalog_db_path: str, sensor_db_path: str):
-    logger.info("[Sensor Process] Started.")
-    wf = Workflow(workflow_db_path)
-    catalog = Catalog(catalog_db_path)
-
-    sensor = Sensor(workflow=wf, catalog=catalog, db_path=sensor_db_path)
-    
-    # Register source directly on sensor
-    sensor.register_asset_source(
-        AssetSource(
-            name="bufr_directory_source",
-            handler="obsforge.detectors.bufr:BufrFilesystemDetector",
-            parameters={
-                "watch_dir": BUFR_DATA_DIR,
-                "glob_pattern": "*.bufr_d"
-            }
-        )
-    )
-
-    sensor.run_forever(interval=3.0)
-
-def oldrun_sensor_process(
+def run_data_processor_process(
     workflow_db_path: str,
     catalog_db_path: str,
 ):
-    logger.info("[Sensor Process] Started.")
+    logger.info("[Data Processor Process] Started.")
 
     wf = Workflow(workflow_db_path)
     catalog = Catalog(catalog_db_path)
 
-    sensor = Sensor(
+    processor = DataProcessor(
         workflow=wf,
         catalog=catalog,
     )
 
-    sensor.run_forever(interval=3.0)
+    processor.run_forever(interval=3.0)
 
 # --- Process 2: Planner Daemon Process ---
 def run_planner_process(db_path: str):
@@ -123,16 +116,16 @@ def init_workflow():
     logger.info("Initializing Workflow DB and Converter Definitions...")
 
     # Register default AssetSource for BUFR files
-    # workflow.register_asset_source(
-        # AssetSource(
-            # name="bufr_directory_source",
-            # handler="obsforge.detectors.bufr:BufrFilesystemDetector",
-            # parameters={
-                # "watch_dir": BUFR_DATA_DIR,
-                # "glob_pattern": "*.bufr_d"
-            # }
-        # )
-    # )
+    workflow.register_asset_source(
+        AssetSource(
+            name="bufr_directory_source",
+            handler="obsforge.detectors.bufr:BufrFilesystemDetector",
+            parameters={
+                "watch_dir": BUFR_DATA_DIR,
+                "glob_pattern": "*.bufr_d"
+            }
+        )
+    )
 
     # Register all 14 Converters and Asset Types in database
     register_all_b2i_converters(
@@ -164,14 +157,22 @@ def main():
     workflow = init_workflow()
     datastore = init_datastore()
 
-    p_sensor = multiprocessing.Process(
-        target=run_sensor_process,
+    # p_sensor = multiprocessing.Process(
+        # target=run_sensor_process,
+        # args=(
+            # str(WORKFLOW_DB_PATH),
+            # str(CATALOG_DB_PATH),
+        # ),
+        # name="Sensor",
+    # )
+
+    p_processor = multiprocessing.Process(
+        target=run_data_processor_process,
         args=(
             str(WORKFLOW_DB_PATH),
             str(CATALOG_DB_PATH),
-            str(SENSOR_DB_PATH),
         ),
-        name="Sensor",
+        name="DataProcessor",
     )
 
     p_planner = multiprocessing.Process(
@@ -186,20 +187,24 @@ def main():
     )
 
     logger.info("--- Starting System Processes (Sensor, Planner, Worker) ---")
-    p_sensor.start()
+    p_processor.start()
+    # p_sensor.start()
     p_planner.start()
     p_worker.start()
 
     try:
-        p_sensor.join()
+        p_processor.join()
+        # p_sensor.join()
         p_planner.join()
         p_worker.join()
     except KeyboardInterrupt:
         logger.info("\n--- Shutting down system processes ---")
-        p_sensor.terminate()
+        # p_sensor.terminate()
+        p_processor.terminate()
         p_planner.terminate()
         p_worker.terminate()
-        p_sensor.join()
+        p_processor.join()
+        # p_sensor.join()
         p_planner.join()
         p_worker.join()
         logger.info("System stopped.")

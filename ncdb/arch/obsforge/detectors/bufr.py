@@ -8,9 +8,9 @@ from typing import Dict, Iterable, Optional, Tuple
 from workflow import (
     Asset,
     AssetContext,
-    AssetSource,
     AssetType,
 )
+from sensor import AssetSource
 
 logger = logging.getLogger(__name__)
 
