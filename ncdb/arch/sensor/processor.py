@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import importlib
+import json
 import logging
+import os
 import time
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, List
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from .orm import Base, AssetSourceORM
+from .asset_source import AssetSource
 
 if TYPE_CHECKING:
-    from workflow import Workflow, AssetSource
+    from workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +35,50 @@ def load_handler(handler_str: str) -> Any:
 class DataProcessor:
     """Discovers and identifies data products using configured detectors."""
 
-    def __init__(self, workflow: Workflow, catalog):
+    def __init__(
+        self,
+        workflow: Workflow,
+        catalog: Any,
+        db_path: str = "obsforge-sensor.db",
+    ):
         self.workflow = workflow
         self.catalog = catalog
         self._detector_cache: Dict[str, Any] = {}
+
+        # Sensor DB management for AssetSources
+        self._db_path = os.path.abspath(db_path)
+        self._engine = create_engine(f"sqlite:///{self._db_path}")
+        self._session_factory = sessionmaker(bind=self._engine)
+        Base.metadata.create_all(self._engine)
+
+    def _get_session(self):
+        return self._session_factory()
+
+    def register_asset_source(self, source: AssetSource) -> AssetSource:
+        """Registers an AssetSource domain object in the sensor database."""
+        with self._get_session() as session:
+            existing = session.query(AssetSourceORM).filter_by(name=source.name).first()
+            if existing:
+                logger.info(f"[DataProcessor] AssetSource '{source.name}' already exists (id={existing.id}).")
+                return AssetSource.from_orm(existing)
+
+            param_str = json.dumps(source.parameters) if source.parameters else None
+            source_orm = AssetSourceORM(
+                name=source.name,
+                handler=source.handler,
+                parameters=param_str,
+            )
+            session.add(source_orm)
+            session.commit()
+            session.refresh(source_orm)
+            logger.info(f"[DataProcessor] Registered new AssetSource '{source.name}' (id={source_orm.id}).")
+            return AssetSource.from_orm(source_orm)
+
+    def list_asset_sources(self) -> List[AssetSource]:
+        """Lists all registered AssetSources from the sensor database."""
+        with self._get_session() as session:
+            sources_orm = session.query(AssetSourceORM).all()
+            return [AssetSource.from_orm(s) for s in sources_orm]
 
     def _resolve_detector(self, source: AssetSource) -> Any:
         handler_str = source.handler
@@ -50,7 +98,7 @@ class DataProcessor:
         return self._detector_cache[handler_str]
 
     def run_once(self):
-        sources = self.workflow.list_asset_sources()
+        sources = self.list_asset_sources()
 
         if not sources:
             logger.debug(

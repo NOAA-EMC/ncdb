@@ -16,12 +16,9 @@ from pathlib import Path
 from workflow import (
     Workflow, 
     Worker, 
-    Planner, 
-    AssetSource
+    Planner,
 )
-# from sensor import Sensor
-from sensor import DataProcessor
-# from dummy_catalog import Catalog
+from sensor import DataProcessor, AssetSource
 from catalog import Catalog
 from obsforge.b2i import register_all_b2i_converters
 from datastore import DataStore
@@ -33,31 +30,16 @@ BASE_DIR = Path(__file__).parent.resolve()
 WORKFLOW_DB_PATH = BASE_DIR / "obsforge-workflow.db"
 CATALOG_DB_PATH = BASE_DIR / "obsforge-catalog.db"
 DATASTORE_DB_PATH = BASE_DIR / "obsforge-datastore.db"
+SENSOR_DB_PATH = BASE_DIR / "obsforge-sensor.db"
 
 OBSFORGE_DIR = "/scratch3/NCEPDEV/da/Edward.Givelberg/obsForge"
 BUFR_DATA_DIR = "/scratch3/NCEPDEV/da/common/ci/bufr"
 
 
-# def run_sensor_process(
-    # workflow_db_path: str,
-    # catalog_db_path: str,
-# ):
-    # logger.info("[Sensor Process] Started.")
-# 
-    # wf = Workflow(workflow_db_path)
-    # catalog = Catalog(catalog_db_path)
-# 
-    # sensor = Sensor(
-        # workflow=wf,
-        # catalog=catalog,
-    # )
-# 
-    # sensor.run_forever(interval=3.0)
-
-
 def run_data_processor_process(
     workflow_db_path: str,
     catalog_db_path: str,
+    sensor_db_path: str,
 ):
     logger.info("[Data Processor Process] Started.")
 
@@ -67,6 +49,19 @@ def run_data_processor_process(
     processor = DataProcessor(
         workflow=wf,
         catalog=catalog,
+        db_path=sensor_db_path,
+    )
+
+    # Register default AssetSource for BUFR files on DataProcessor
+    processor.register_asset_source(
+        AssetSource(
+            name="bufr_directory_source",
+            handler="obsforge.detectors.bufr:BufrFilesystemDetector",
+            parameters={
+                "watch_dir": BUFR_DATA_DIR,
+                "glob_pattern": "*.bufr_d"
+            }
+        )
     )
 
     processor.run_forever(interval=3.0)
@@ -115,18 +110,6 @@ def init_workflow():
     workflow = Workflow(str(WORKFLOW_DB_PATH))
     logger.info("Initializing Workflow DB and Converter Definitions...")
 
-    # Register default AssetSource for BUFR files
-    workflow.register_asset_source(
-        AssetSource(
-            name="bufr_directory_source",
-            handler="obsforge.detectors.bufr:BufrFilesystemDetector",
-            parameters={
-                "watch_dir": BUFR_DATA_DIR,
-                "glob_pattern": "*.bufr_d"
-            }
-        )
-    )
-
     # Register all 14 Converters and Asset Types in database
     register_all_b2i_converters(
         workflow=workflow,
@@ -157,20 +140,12 @@ def main():
     workflow = init_workflow()
     datastore = init_datastore()
 
-    # p_sensor = multiprocessing.Process(
-        # target=run_sensor_process,
-        # args=(
-            # str(WORKFLOW_DB_PATH),
-            # str(CATALOG_DB_PATH),
-        # ),
-        # name="Sensor",
-    # )
-
     p_processor = multiprocessing.Process(
         target=run_data_processor_process,
         args=(
             str(WORKFLOW_DB_PATH),
             str(CATALOG_DB_PATH),
+            str(SENSOR_DB_PATH),
         ),
         name="DataProcessor",
     )
@@ -186,25 +161,21 @@ def main():
         name="Worker"
     )
 
-    logger.info("--- Starting System Processes (Sensor, Planner, Worker) ---")
+    logger.info("--- Starting System Processes (DataProcessor, Planner, Worker) ---")
     p_processor.start()
-    # p_sensor.start()
     p_planner.start()
     p_worker.start()
 
     try:
         p_processor.join()
-        # p_sensor.join()
         p_planner.join()
         p_worker.join()
     except KeyboardInterrupt:
         logger.info("\n--- Shutting down system processes ---")
-        # p_sensor.terminate()
         p_processor.terminate()
         p_planner.terminate()
         p_worker.terminate()
         p_processor.join()
-        # p_sensor.join()
         p_planner.join()
         p_worker.join()
         logger.info("System stopped.")
